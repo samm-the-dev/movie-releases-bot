@@ -124,6 +124,66 @@ export async function getGenreMap(): Promise<Map<number, string>> {
   return new Map(data.genres.map((g) => [g.id, g.name]));
 }
 
+/** Detailed movie info from /movie/{id} with credits appended. */
+export interface TMDBMovieDetails {
+  id: number;
+  title: string;
+  overview: string;
+  runtime: number | null;
+  poster_path: string | null;
+  genres: TMDBGenre[];
+  directors: string[];
+}
+
+interface TMDBCrewMember {
+  job: string;
+  name: string;
+}
+
+interface TMDBMovieDetailsResponse {
+  id: number;
+  title: string;
+  overview: string;
+  runtime: number | null;
+  poster_path: string | null;
+  genres: TMDBGenre[];
+  credits?: {
+    crew?: TMDBCrewMember[];
+  };
+}
+
+/**
+ * Get detailed movie info including runtime and director(s).
+ * Uses append_to_response=credits to get crew in a single call.
+ */
+export async function getMovieDetails(movieId: number): Promise<TMDBMovieDetails> {
+  const data = await tmdbFetch<TMDBMovieDetailsResponse>(`/movie/${movieId}`, {
+    append_to_response: 'credits',
+  });
+
+  const directors = (data.credits?.crew ?? [])
+    .filter((c) => c.job === 'Director')
+    .map((c) => c.name);
+
+  return {
+    id: data.id,
+    title: data.title,
+    overview: data.overview,
+    runtime: data.runtime,
+    poster_path: data.poster_path,
+    genres: data.genres,
+    directors,
+  };
+}
+
+/** Format runtime as "Xh Ym". */
+export function formatRuntime(minutes: number | null): string | null {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 /** Format a Date as YYYY-MM-DD for TMDB API params. */
 export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);

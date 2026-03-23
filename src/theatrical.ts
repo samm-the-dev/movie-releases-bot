@@ -1,14 +1,17 @@
 /**
  * Theatrical release discovery and post formatting.
  *
- * Queries TMDB for movies opening this weekend, filters against
- * already-posted state, and formats a Bluesky post with poster images.
+ * Queries TMDB for movies opening this weekend, fetches details
+ * (runtime, director), and formats a Bluesky thread: summary post
+ * with poster album + per-movie reply posts with individual posters.
  */
-import type { TMDBMovie } from './tmdb.js';
+import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
 import {
   discoverByReleaseType,
   getGenreMap,
+  getMovieDetails,
   getTheatricalDateRange,
+  formatRuntime,
   ReleaseType,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
@@ -19,7 +22,7 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 const MAX_MOVIES_DISPLAY = 15;
 
 /** Max poster images per post (Bluesky limit). */
-const MAX_IMAGES = 4;
+const MAX_ALBUM_IMAGES = 4;
 
 /** Minimum TMDB popularity score to include (filters micro-releases). */
 const MIN_POPULARITY = 10;
@@ -39,10 +42,38 @@ function formatGenres(genreIds: number[], genreMap: Map<number, string>): string
   return names.length > 0 ? names.join('/') : '';
 }
 
-/** Format a single movie line for the bullet list. Title + genre only. */
+/** Format genre string from TMDBMovieDetails (which has full genre objects). */
+function formatDetailGenres(details: TMDBMovieDetails): string {
+  return details.genres
+    .slice(0, 2)
+    .map((g) => g.name)
+    .join('/');
+}
+
+/** Format a single movie line for the summary bullet list. Title + genre only. */
 export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>): string {
   const genres = formatGenres(movie.genre_ids, genreMap);
   return genres ? `${movie.title} (${genres})` : movie.title;
+}
+
+/**
+ * Format a focused per-movie post with rich details.
+ * Includes title, genre, runtime, and director(s).
+ */
+export function formatMovieDetail(details: TMDBMovieDetails): string {
+  const genres = formatDetailGenres(details);
+  const runtime = formatRuntime(details.runtime);
+
+  const parts = [genres, runtime].filter(Boolean);
+  const metaLine = parts.length > 0 ? parts.join(' \u00B7 ') : '';
+
+  const lines = [details.title];
+  if (metaLine) lines.push(metaLine);
+  if (details.directors.length > 0) {
+    lines.push(`Dir. ${details.directors.join(', ')}`);
+  }
+
+  return lines.join('\n');
 }
 
 /** Format the weekend date for the header. */
@@ -61,37 +92,43 @@ export interface PosterImage {
   alt: string;
 }
 
+/** A movie with its fetched details and poster. */
+export interface EnrichedMovie {
+  movie: TMDBMovie;
+  details: TMDBMovieDetails;
+  poster: PosterImage | null;
+}
+
 export interface TheatricalResult {
-  /** Post texts (length > 1 means thread). */
-  posts: string[];
+  /** Summary post text (with bullet list). */
+  summaryPost: string;
+  /** Per-movie detail post texts. */
+  moviePosts: string[];
   /** TMDB IDs of movies included in the posts. */
   movieIds: number[];
-  /** Movies that were discovered. */
-  movies: TMDBMovie[];
-  /** Poster images for the top movies (up to 4). */
-  posters: PosterImage[];
+  /** Poster album for the summary post (up to 4). */
+  albumPosters: PosterImage[];
+  /** Individual posters for per-movie reply posts. */
+  moviePosters: (PosterImage | null)[];
 }
 
 /**
  * Fetch a movie poster from TMDB's image CDN.
  * Returns null if the movie has no poster or the fetch fails.
  */
-async function fetchPoster(movie: TMDBMovie, genreMap: Map<number, string>): Promise<PosterImage | null> {
-  if (!movie.poster_path) return null;
+async function fetchPoster(title: string, posterPath: string | null, altSuffix: string): Promise<PosterImage | null> {
+  if (!posterPath) return null;
 
   try {
-    const url = `${TMDB_IMAGE_BASE}${movie.poster_path}`;
+    const url = `${TMDB_IMAGE_BASE}${posterPath}`;
     const response = await fetch(url);
     if (!response.ok) return null;
 
     const buffer = await response.arrayBuffer();
-    const genres = formatGenres(movie.genre_ids, genreMap);
-    const genreLabel = genres ? ` (${genres})` : '';
-
     return {
       data: new Uint8Array(buffer),
       mimeType: 'image/jpeg',
-      alt: `Movie poster for ${movie.title}${genreLabel}`,
+      alt: `Movie poster for ${title}${altSuffix ? ` (${altSuffix})` : ''}`,
     };
   } catch {
     return null;
@@ -101,8 +138,8 @@ async function fetchPoster(movie: TMDBMovie, genreMap: Map<number, string>): Pro
 /**
  * Discover and format theatrical releases for this weekend.
  *
- * Returns formatted post text(s), movie IDs for tracking,
- * and up to 4 poster images for the top movies.
+ * Returns a summary post with poster album, plus per-movie detail
+ * posts with individual posters for threading.
  */
 export async function getTheatricalReleases(
   state: TrackingState,
@@ -120,28 +157,45 @@ export async function getTheatricalReleases(
 
   if (newMovies.length === 0) return null;
 
+  // Fetch details and posters in parallel
   const genreMap = await getGenreMap();
-  const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
 
-  const header = `\uD83C\uDFAC Opening This Weekend (${formatWeekendDate(gte)})`;
-  const footer = 'What are you seeing? \uD83C\uDF7F';
-
-  const posts = formatBulletList(header, lines, footer);
-
-  // Fetch posters for the top movies (up to 4, sorted by popularity)
-  const posterCandidates = newMovies
-    .filter((m) => m.poster_path)
-    .slice(0, MAX_IMAGES);
-
-  const posterResults = await Promise.all(
-    posterCandidates.map((m) => fetchPoster(m, genreMap)),
+  const enriched: EnrichedMovie[] = await Promise.all(
+    newMovies.map(async (movie) => {
+      const [details, poster] = await Promise.all([
+        getMovieDetails(movie.id),
+        fetchPoster(movie.title, movie.poster_path, formatGenres(movie.genre_ids, genreMap)),
+      ]);
+      return { movie, details, poster };
+    }),
   );
-  const posters = posterResults.filter((p): p is PosterImage => p !== null);
+
+  // Summary post with bullet list + hashtags
+  const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
+  const releaseCount = newMovies.length;
+  const header = `\uD83C\uDFAC Opening This Weekend (${formatWeekendDate(gte)})`;
+  const footer = `What are you seeing? \uD83C\uDF7F\uD83D\uDCFD\uFE0F filmsky\n\n#NowPlaying #movies`;
+
+  const summaryParts = formatBulletList(header, lines, footer);
+  const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
+
+  // Per-movie detail posts
+  const moviePosts = enriched.map((e) => formatMovieDetail(e.details));
+
+  // Album posters (up to 4 for summary)
+  const albumPosters = enriched
+    .map((e) => e.poster)
+    .filter((p): p is PosterImage => p !== null)
+    .slice(0, MAX_ALBUM_IMAGES);
+
+  // Individual posters for replies
+  const moviePosters = enriched.map((e) => e.poster);
 
   return {
-    posts,
+    summaryPost,
+    moviePosts,
     movieIds: newMovies.map((m) => m.id),
-    movies: newMovies,
-    posters,
+    albumPosters,
+    moviePosters,
   };
 }

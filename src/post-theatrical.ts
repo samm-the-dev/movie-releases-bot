@@ -1,8 +1,8 @@
 /**
  * Entry point for the theatrical releases GHA job.
  *
- * Discovers movies opening this weekend, formats a post with poster
- * images, and posts to Bluesky. Updates tracking state to prevent duplicates.
+ * Posts a summary with poster album, then per-movie reply threads
+ * with individual posters, runtime, and director info.
  */
 import { RichText, type AtpAgent } from '@atproto/api';
 import { getTheatricalReleases, type PosterImage } from './theatrical.js';
@@ -16,15 +16,12 @@ const STATE_FILE = 'state/seen_theatrical.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
 
 /**
- * Upload poster images and build the embed parameter for agent.post().
- * Returns undefined if no posters are available.
+ * Upload poster images and return the blob refs for embedding.
  */
-async function uploadPosters(
+async function uploadImages(
   agent: AtpAgent,
   posters: PosterImage[],
-): Promise<Array<{ alt: string; image: unknown }> | undefined> {
-  if (posters.length === 0) return undefined;
-
+): Promise<Array<{ alt: string; image: unknown }>> {
   const images = [];
   for (const poster of posters) {
     const response = await agent.uploadBlob(poster.data, {
@@ -35,24 +32,21 @@ async function uploadPosters(
       image: response.data.blob,
     });
   }
-
   return images;
 }
 
 /**
- * Post to Bluesky with text, facets, and optional image embed.
- * Handles the image embed directly since the toolbox module
- * only supports link card embeds.
+ * Post text with optional image embed. Returns uri/cid.
  */
 async function postWithImages(
   agent: AtpAgent,
   text: string,
   posters: PosterImage[],
+  replyTo?: { uri: string; cid: string },
+  root?: { uri: string; cid: string },
 ): Promise<{ uri: string; cid: string }> {
   const rt = new RichText({ text });
   await rt.detectFacets(agent);
-
-  const images = await uploadPosters(agent, posters);
 
   const postParams: Parameters<typeof agent.post>[0] = {
     text: rt.text,
@@ -60,15 +54,22 @@ async function postWithImages(
     createdAt: new Date().toISOString(),
   };
 
-  if (images) {
+  if (posters.length > 0) {
+    const images = await uploadImages(agent, posters);
     postParams.embed = {
       $type: 'app.bsky.embed.images',
       images: images as typeof postParams.embed extends { images: infer I } ? I : never,
     } as typeof postParams.embed;
   }
 
-  const response = await agent.post(postParams);
+  if (replyTo) {
+    postParams.reply = {
+      root: root ?? replyTo,
+      parent: replyTo,
+    };
+  }
 
+  const response = await agent.post(postParams);
   return { uri: response.uri, cid: response.cid };
 }
 
@@ -82,21 +83,28 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(`Found ${result.movies.length} movies to announce.`);
-  console.log(`Fetched ${result.posters.length} poster images.`);
+  console.log(`Found ${result.moviePosts.length} movies to announce.`);
+  console.log(`Fetched ${result.albumPosters.length} album posters.`);
 
   if (DRY_RUN) {
-    console.log('\n[DRY RUN] Would post:\n');
-    for (const postText of result.posts) {
-      console.log('---');
-      console.log(postText);
-      console.log('---\n');
-    }
-    if (result.posters.length > 0) {
-      console.log(`[DRY RUN] Would attach ${result.posters.length} poster image(s):`);
-      for (const poster of result.posters) {
-        console.log(`  ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
+    console.log('\n[DRY RUN] Summary post:\n---');
+    console.log(result.summaryPost);
+    console.log('---');
+    if (result.albumPosters.length > 0) {
+      console.log(`Album: ${result.albumPosters.length} poster(s)`);
+      for (const p of result.albumPosters) {
+        console.log(`  ${p.alt} (${(p.data.length / 1024).toFixed(0)} KB)`);
       }
+    }
+    console.log('\n[DRY RUN] Movie detail replies:');
+    for (let i = 0; i < result.moviePosts.length; i++) {
+      console.log(`\n--- Reply ${i + 1} ---`);
+      console.log(result.moviePosts[i]);
+      const poster = result.moviePosters[i];
+      if (poster) {
+        console.log(`Poster: ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
+      }
+      console.log('---');
     }
     return;
   }
@@ -104,29 +112,25 @@ async function main(): Promise<void> {
   const credentials = credentialsFromEnv();
   const agent = await createClient(credentials);
 
-  // Post with images attached to the first post
-  const firstResult = await postWithImages(agent, result.posts[0], result.posters);
-  console.log(`Posted: ${firstResult.uri}`);
+  // Post summary with poster album
+  const summaryResult = await postWithImages(agent, result.summaryPost, result.albumPosters);
+  console.log(`Summary posted: ${summaryResult.uri}`);
 
-  // Thread continuation posts (no images)
-  if (result.posts.length > 1) {
-    let parent = firstResult;
-    for (let i = 1; i < result.posts.length; i++) {
-      const rt = new RichText({ text: result.posts[i] });
-      await rt.detectFacets(agent);
+  // Post per-movie replies
+  let parent = summaryResult;
+  for (let i = 0; i < result.moviePosts.length; i++) {
+    const moviePoster = result.moviePosters[i];
+    const posters = moviePoster ? [moviePoster] : [];
 
-      const response = await agent.post({
-        text: rt.text,
-        facets: rt.facets,
-        reply: {
-          root: { uri: firstResult.uri, cid: firstResult.cid },
-          parent: { uri: parent.uri, cid: parent.cid },
-        },
-        createdAt: new Date().toISOString(),
-      });
-      parent = { uri: response.uri, cid: response.cid };
-      console.log(`  Thread post ${i + 1}: ${response.uri}`);
-    }
+    const replyResult = await postWithImages(
+      agent,
+      result.moviePosts[i],
+      posters,
+      parent,
+      summaryResult, // root is always the summary
+    );
+    parent = replyResult;
+    console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
   // Update tracking state

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, getTheatricalDateRange, ReleaseType } from './tmdb.js';
+import { formatDate, formatRuntime, getTheatricalDateRange, ReleaseType } from './tmdb.js';
 
 describe('formatDate', () => {
   it('formats a date as YYYY-MM-DD', () => {
@@ -30,6 +30,24 @@ describe('getTheatricalDateRange', () => {
     const range = getTheatricalDateRange(ref);
     expect(range.gte).toBe('2026-04-02');
     expect(range.lte).toBe('2026-04-08');
+  });
+});
+
+describe('formatRuntime', () => {
+  it('formats hours and minutes', () => {
+    expect(formatRuntime(132)).toBe('2h 12m');
+  });
+
+  it('formats sub-hour runtime', () => {
+    expect(formatRuntime(45)).toBe('45m');
+  });
+
+  it('returns null for null input', () => {
+    expect(formatRuntime(null)).toBeNull();
+  });
+
+  it('returns null for zero', () => {
+    expect(formatRuntime(0)).toBeNull();
   });
 });
 

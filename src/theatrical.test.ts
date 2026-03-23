@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatMovieLine } from './theatrical.js';
-import type { TMDBMovie } from './tmdb.js';
+import { formatMovieLine, formatMovieDetail } from './theatrical.js';
+import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
 
 const genreMap = new Map([
   [28, 'Action'],
@@ -23,6 +23,19 @@ function makeMovie(overrides: Partial<TMDBMovie> = {}): TMDBMovie {
   };
 }
 
+function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetails {
+  return {
+    id: 1,
+    title: 'Test Movie',
+    overview: 'A great film.',
+    runtime: 120,
+    poster_path: '/test.jpg',
+    genres: [{ id: 28, name: 'Action' }, { id: 53, name: 'Thriller' }],
+    directors: ['Test Director'],
+    ...overrides,
+  };
+}
+
 describe('formatMovieLine', () => {
   it('formats title with genres', () => {
     const line = formatMovieLine(makeMovie({ title: 'Sinners' }), genreMap);
@@ -39,10 +52,32 @@ describe('formatMovieLine', () => {
     const line = formatMovieLine(movie, genreMap);
     expect(line).toBe('Test Movie (Action/Horror)');
   });
+});
 
-  it('does not include overview text', () => {
-    const line = formatMovieLine(makeMovie(), genreMap);
-    expect(line).not.toContain('great film');
-    expect(line).toBe('Test Movie (Action/Thriller)');
+describe('formatMovieDetail', () => {
+  it('formats full details with title, genre, runtime, director', () => {
+    const text = formatMovieDetail(makeDetails());
+    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director');
+  });
+
+  it('handles multiple directors', () => {
+    const text = formatMovieDetail(makeDetails({ directors: ['Alice', 'Bob'] }));
+    expect(text).toContain('Dir. Alice, Bob');
+  });
+
+  it('handles no runtime', () => {
+    const text = formatMovieDetail(makeDetails({ runtime: null }));
+    expect(text).toBe('Test Movie\nAction/Thriller\nDir. Test Director');
+  });
+
+  it('handles no directors', () => {
+    const text = formatMovieDetail(makeDetails({ directors: [] }));
+    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m');
+    expect(text).not.toContain('Dir.');
+  });
+
+  it('handles no genres', () => {
+    const text = formatMovieDetail(makeDetails({ genres: [] }));
+    expect(text).toBe('Test Movie\n2h 0m\nDir. Test Director');
   });
 });
