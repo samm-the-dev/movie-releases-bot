@@ -2,7 +2,7 @@
  * Theatrical release discovery and post formatting.
  *
  * Queries TMDB for movies opening this weekend, filters against
- * already-posted state, and formats a Bluesky post.
+ * already-posted state, and formats a Bluesky post with poster images.
  */
 import type { TMDBMovie } from './tmdb.js';
 import {
@@ -18,8 +18,14 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 /** Max movies to include before threading. */
 const MAX_MOVIES_DISPLAY = 15;
 
+/** Max poster images per post (Bluesky limit). */
+const MAX_IMAGES = 4;
+
 /** Minimum TMDB popularity score to include (filters micro-releases). */
 const MIN_POPULARITY = 10;
+
+/** TMDB image base URL. w500 is a good balance of quality and size. */
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 /**
  * Format a short genre string from genre IDs.
@@ -33,48 +39,26 @@ function formatGenres(genreIds: number[], genreMap: Map<number, string>): string
   return names.length > 0 ? names.join('/') : '';
 }
 
-/**
- * Truncate a movie overview to a target length.
- * Cuts at sentence or word boundary.
- */
-function truncateOverview(overview: string, maxLength: number): string {
-  if (overview.length <= maxLength) return overview;
-
-  // Try to cut at a sentence boundary
-  const truncated = overview.slice(0, maxLength);
-  const lastPeriod = truncated.lastIndexOf('.');
-  if (lastPeriod > maxLength * 0.5) {
-    return truncated.slice(0, lastPeriod + 1);
-  }
-
-  // Fall back to word boundary
-  const lastSpace = truncated.lastIndexOf(' ');
-  if (lastSpace > 0) {
-    return truncated.slice(0, lastSpace) + '\u2026';
-  }
-
-  return truncated + '\u2026';
-}
-
-/** Format a single movie line for the bullet list. */
+/** Format a single movie line for the bullet list. Title + genre only. */
 export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>): string {
   const genres = formatGenres(movie.genre_ids, genreMap);
-  const genreSuffix = genres ? ` (${genres})` : '';
-
-  // Aim for ~60 chars per line to fit ~4-5 movies in 300 chars
-  const maxOverview = 50 - movie.title.length;
-  if (maxOverview > 15 && movie.overview) {
-    const snippet = truncateOverview(movie.overview, maxOverview);
-    return `${movie.title} \u2014 ${snippet}${genreSuffix}`;
-  }
-
-  return `${movie.title}${genreSuffix}`;
+  return genres ? `${movie.title} (${genres})` : movie.title;
 }
 
 /** Format the weekend date for the header. */
 function formatWeekendDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/** A poster image to upload to Bluesky. */
+export interface PosterImage {
+  /** Raw image bytes. */
+  data: Uint8Array;
+  /** MIME type (always image/jpeg from TMDB). */
+  mimeType: string;
+  /** Alt text for accessibility. */
+  alt: string;
 }
 
 export interface TheatricalResult {
@@ -84,13 +68,41 @@ export interface TheatricalResult {
   movieIds: number[];
   /** Movies that were discovered. */
   movies: TMDBMovie[];
+  /** Poster images for the top movies (up to 4). */
+  posters: PosterImage[];
+}
+
+/**
+ * Fetch a movie poster from TMDB's image CDN.
+ * Returns null if the movie has no poster or the fetch fails.
+ */
+async function fetchPoster(movie: TMDBMovie, genreMap: Map<number, string>): Promise<PosterImage | null> {
+  if (!movie.poster_path) return null;
+
+  try {
+    const url = `${TMDB_IMAGE_BASE}${movie.poster_path}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const buffer = await response.arrayBuffer();
+    const genres = formatGenres(movie.genre_ids, genreMap);
+    const genreLabel = genres ? ` (${genres})` : '';
+
+    return {
+      data: new Uint8Array(buffer),
+      mimeType: 'image/jpeg',
+      alt: `Movie poster for ${movie.title}${genreLabel}`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Discover and format theatrical releases for this weekend.
  *
- * Returns formatted post text(s) and the movie IDs for tracking.
- * Filters out already-posted movies and low-popularity titles.
+ * Returns formatted post text(s), movie IDs for tracking,
+ * and up to 4 poster images for the top movies.
  */
 export async function getTheatricalReleases(
   state: TrackingState,
@@ -116,9 +128,20 @@ export async function getTheatricalReleases(
 
   const posts = formatBulletList(header, lines, footer);
 
+  // Fetch posters for the top movies (up to 4, sorted by popularity)
+  const posterCandidates = newMovies
+    .filter((m) => m.poster_path)
+    .slice(0, MAX_IMAGES);
+
+  const posterResults = await Promise.all(
+    posterCandidates.map((m) => fetchPoster(m, genreMap)),
+  );
+  const posters = posterResults.filter((p): p is PosterImage => p !== null);
+
   return {
     posts,
     movieIds: newMovies.map((m) => m.id),
     movies: newMovies,
+    posters,
   };
 }

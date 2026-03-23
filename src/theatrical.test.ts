@@ -24,37 +24,25 @@ function makeMovie(overrides: Partial<TMDBMovie> = {}): TMDBMovie {
 }
 
 describe('formatMovieLine', () => {
-  it('includes title and genres for short titles', () => {
+  it('formats title with genres', () => {
     const line = formatMovieLine(makeMovie({ title: 'Sinners' }), genreMap);
-    expect(line).toContain('Sinners');
-    expect(line).toContain('Action/Thriller');
+    expect(line).toBe('Sinners (Action/Thriller)');
   });
 
-  it('handles movies with no genres', () => {
+  it('returns title only when no genres', () => {
     const line = formatMovieLine(makeMovie({ genre_ids: [] }), genreMap);
-    expect(line).toContain('Test Movie');
-    expect(line).not.toContain('()');
-  });
-
-  it('handles movies with no overview', () => {
-    const line = formatMovieLine(makeMovie({ overview: '' }), genreMap);
-    expect(line).toContain('Test Movie');
-  });
-
-  it('truncates long overviews', () => {
-    const movie = makeMovie({
-      title: 'Short',
-      overview: 'This is a very long overview that should get truncated because it exceeds the maximum length we allow per line in the bullet list format.',
-    });
-    const line = formatMovieLine(movie, genreMap);
-    expect(line.length).toBeLessThan(120);
+    expect(line).toBe('Test Movie');
   });
 
   it('limits to 2 genres', () => {
     const movie = makeMovie({ genre_ids: [28, 27, 53, 35] });
     const line = formatMovieLine(movie, genreMap);
-    // Should show Action/Horror, not all four
-    expect(line).toContain('Action/Horror');
-    expect(line).not.toContain('Thriller');
+    expect(line).toBe('Test Movie (Action/Horror)');
+  });
+
+  it('does not include overview text', () => {
+    const line = formatMovieLine(makeMovie(), genreMap);
+    expect(line).not.toContain('great film');
+    expect(line).toBe('Test Movie (Action/Thriller)');
   });
 });
