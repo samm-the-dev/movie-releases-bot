@@ -1,3 +1,4 @@
 [submodule ".toolbox"]
 	path = .toolbox
 	url = https://github.com/samm-the-dev/toolbox.git
+	ignore = untracked
