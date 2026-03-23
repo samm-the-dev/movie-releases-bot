@@ -180,8 +180,8 @@ export async function getDigitalReleases(
 
   // Summary post
   const lines = releases.map((r) => r.details.title);
-  const header = `\uD83D\uDCFA Now on Digital (${formatWeekDate(referenceDate)})`;
-  const footer = `[hashtags go here]`;
+  const header = `\uD83D\uDCE1 Now on Digital (${formatWeekDate(referenceDate)})`;
+  const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 
   // Per-movie posts

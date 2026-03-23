@@ -1,9 +1,9 @@
 name: Post Theatrical Releases
 
 on:
-  # schedule:
-  #   # Thursday 3:30 PM UTC = 10:30 AM CT
-  #   - cron: '30 15 * * 4'
+  schedule:
+    # Thursday 3:30 PM UTC = 10:30 AM CT
+    - cron: '30 15 * * 4'
   workflow_dispatch:
     inputs:
       dry_run:

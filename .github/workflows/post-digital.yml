@@ -1,9 +1,9 @@
 name: Post Digital Releases
 
 on:
-  # schedule:
-  #   # Tuesday 3:30 PM UTC = 10:30 AM CT
-  #   - cron: '30 15 * * 2'
+  schedule:
+    # Tuesday 3:30 PM UTC = 10:30 AM CT
+    - cron: '30 15 * * 2'
   workflow_dispatch:
     inputs:
       dry_run:
