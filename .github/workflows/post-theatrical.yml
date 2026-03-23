@@ -1,0 +1,46 @@
+name: Post Theatrical Releases
+
+on:
+  schedule:
+    # Thursday 3:30 PM UTC = 10:30 AM CT
+    - cron: '30 15 * * 4'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview without posting)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Post to Bluesky
+        run: npx tsx src/post-theatrical.ts
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        if: env.DRY_RUN != '1'
+        with:
+          commit_message: 'update theatrical seen IDs [skip ci]'
+          file_pattern: 'state/*.json'
+        env:
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}

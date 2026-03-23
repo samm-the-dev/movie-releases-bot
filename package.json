@@ -1,0 +1,22 @@
+{
+  "name": "movie-releases-bot",
+  "description": "Bluesky bot for theatrical and digital movie release announcements.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "post:theatrical": "tsx src/post-theatrical.ts",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,151 @@
+/**
+ * TMDB API client focused on release-date endpoints.
+ *
+ * Uses plain fetch -- no SDK needed. TMDB rate limit is 40 req/10s,
+ * and a typical weekly run makes <10 requests.
+ *
+ * Requires TMDB_API_KEY env var (free registration at api.themoviedb.org).
+ */
+
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+
+/** TMDB release type codes from /release_dates endpoint. */
+export const ReleaseType = {
+  PREMIERE: 1,
+  THEATRICAL_LIMITED: 2,
+  THEATRICAL: 3,
+  DIGITAL: 4,
+  PHYSICAL: 5,
+  TV: 6,
+} as const;
+
+export interface TMDBMovie {
+  id: number;
+  title: string;
+  overview: string;
+  popularity: number;
+  release_date: string;
+  genre_ids: number[];
+  poster_path: string | null;
+}
+
+interface TMDBDiscoverResponse {
+  page: number;
+  results: TMDBMovie[];
+  total_pages: number;
+  total_results: number;
+}
+
+export interface TMDBReleaseDateEntry {
+  type: number;
+  release_date: string;
+  certification: string;
+  note: string;
+}
+
+interface TMDBReleaseDateResult {
+  iso_3166_1: string;
+  release_dates: TMDBReleaseDateEntry[];
+}
+
+interface TMDBReleaseDatesResponse {
+  id: number;
+  results: TMDBReleaseDateResult[];
+}
+
+export interface TMDBGenre {
+  id: number;
+  name: string;
+}
+
+interface TMDBGenreResponse {
+  genres: TMDBGenre[];
+}
+
+export function getApiKey(): string {
+  const key = process.env.TMDB_API_KEY;
+  if (!key) throw new Error('Missing TMDB_API_KEY env var.');
+  return key;
+}
+
+async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+  const url = new URL(`${TMDB_BASE}${endpoint}`);
+  url.searchParams.set('api_key', getApiKey());
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, v);
+  }
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+/**
+ * Discover movies by release type and date range.
+ * Used for both theatrical (type 3) and digital (type 4) release detection.
+ */
+export async function discoverByReleaseType(
+  releaseType: number,
+  dateGte: string,
+  dateLte: string,
+  region = 'US',
+): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
+    region,
+    with_release_type: String(releaseType),
+    'release_date.gte': dateGte,
+    'release_date.lte': dateLte,
+    sort_by: 'popularity.desc',
+  });
+  return data.results;
+}
+
+/**
+ * Get per-country release dates for a movie.
+ * Returns entries for the specified region (default US).
+ */
+export async function getReleaseDates(
+  movieId: number,
+  region = 'US',
+): Promise<TMDBReleaseDateEntry[]> {
+  const data = await tmdbFetch<TMDBReleaseDatesResponse>(`/movie/${movieId}/release_dates`);
+  const match = data.results.find((r) => r.iso_3166_1 === region);
+  return match?.release_dates ?? [];
+}
+
+/**
+ * Get the genre map (id -> name).
+ * This rarely changes -- callers should cache the result.
+ */
+export async function getGenreMap(): Promise<Map<number, string>> {
+  const data = await tmdbFetch<TMDBGenreResponse>('/genre/movie/list');
+  return new Map(data.genres.map((g) => [g.id, g.name]));
+}
+
+/** Format a Date as YYYY-MM-DD for TMDB API params. */
+export function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Get the date range for "opening this weekend" based on a reference date.
+ * Returns Thursday through next Wednesday (7-day window).
+ */
+export function getTheatricalDateRange(referenceDate: Date = new Date()): { gte: string; lte: string } {
+  const d = new Date(referenceDate);
+  // Find this Thursday (day 4)
+  const day = d.getDay();
+  const diffToThursday = (4 - day + 7) % 7;
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() + diffToThursday);
+
+  const nextWednesday = new Date(thursday);
+  nextWednesday.setDate(thursday.getDate() + 6);
+
+  return {
+    gte: formatDate(thursday),
+    lte: formatDate(nextWednesday),
+  };
+}
