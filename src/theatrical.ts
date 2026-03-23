@@ -175,7 +175,7 @@ export async function getTheatricalReleases(
   const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
   const releaseCount = newMovies.length;
   const header = `\uD83C\uDFAC Opening This Weekend (${formatWeekendDate(gte)})`;
-  const footer = `What are you seeing? \uD83C\uDF7F\uD83D\uDCFD\uFE0F\n\n[hashtags go here]`;
+  const footer = `\uD83D\uDCFD\uFE0F #NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
