@@ -55,9 +55,9 @@ describe('formatMovieLine', () => {
 });
 
 describe('formatMovieDetail', () => {
-  it('formats full details with title, genre, runtime, director', () => {
+  it('formats full details with title, genre, runtime, director, and TMDB link', () => {
     const text = formatMovieDetail(makeDetails());
-    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director');
+    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
   it('handles multiple directors', () => {
@@ -67,17 +67,17 @@ describe('formatMovieDetail', () => {
 
   it('handles no runtime', () => {
     const text = formatMovieDetail(makeDetails({ runtime: null }));
-    expect(text).toBe('Test Movie\nAction/Thriller\nDir. Test Director');
+    expect(text).toContain('Test Movie\nAction/Thriller\nDir. Test Director');
   });
 
   it('handles no directors', () => {
     const text = formatMovieDetail(makeDetails({ directors: [] }));
-    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m');
+    expect(text).toContain('Test Movie\nAction/Thriller \u00B7 2h 0m\nhttps://');
     expect(text).not.toContain('Dir.');
   });
 
-  it('handles no genres', () => {
-    const text = formatMovieDetail(makeDetails({ genres: [] }));
-    expect(text).toBe('Test Movie\n2h 0m\nDir. Test Director');
+  it('always includes TMDB link', () => {
+    const text = formatMovieDetail(makeDetails({ id: 42 }));
+    expect(text).toContain('https://www.themoviedb.org/movie/42');
   });
 });

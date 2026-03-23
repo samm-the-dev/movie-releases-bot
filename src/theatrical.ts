@@ -72,6 +72,7 @@ export function formatMovieDetail(details: TMDBMovieDetails): string {
   if (details.directors.length > 0) {
     lines.push(`Dir. ${details.directors.join(', ')}`);
   }
+  lines.push(`https://www.themoviedb.org/movie/${details.id}`);
 
   return lines.join('\n');
 }
@@ -174,7 +175,7 @@ export async function getTheatricalReleases(
   const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
   const releaseCount = newMovies.length;
   const header = `\uD83C\uDFAC Opening This Weekend (${formatWeekendDate(gte)})`;
-  const footer = `What are you seeing? \uD83C\uDF7F\uD83D\uDCFD\uFE0F filmsky\n\n#NowPlaying #movies`;
+  const footer = `What are you seeing? \uD83C\uDF7F\uD83D\uDCFD\uFE0F\n\n[hashtags go here]`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
