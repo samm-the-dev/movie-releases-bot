@@ -174,8 +174,8 @@ export async function getTheatricalReleases(
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
   const releaseCount = newMovies.length;
-  const header = `🎬 Opening This Weekend (${formatWeekendDate(gte)})`;
-  const footer = `📽️ #NowPlaying #Movies #Filmsky`;
+  const header = `📽️ Opening This Weekend (${formatWeekendDate(gte)})`;
+  const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
