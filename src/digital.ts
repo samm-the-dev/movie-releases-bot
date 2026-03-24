@@ -119,7 +119,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
   const runtime = formatRuntime(details.runtime);
 
   const parts = [genres, runtime].filter(Boolean);
-  const metaLine = parts.length > 0 ? parts.join(' \u00B7 ') : '';
+  const metaLine = parts.length > 0 ? parts.join(' · ') : '';
 
   const lines = [details.title];
   if (metaLine) lines.push(metaLine);
@@ -129,7 +129,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
 
   // Theatrical -> Digital date window
   if (theatricalDate && digitalDate) {
-    lines.push(`Theatrical ${formatShortDate(theatricalDate)} \u2192 Digital ${formatShortDate(digitalDate)}`);
+    lines.push(`Theatrical ${formatShortDate(theatricalDate)} → Digital ${formatShortDate(digitalDate)}`);
   } else if (digitalDate) {
     lines.push(`Digital ${formatShortDate(digitalDate)}`);
   }
