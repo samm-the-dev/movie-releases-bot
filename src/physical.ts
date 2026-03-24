@@ -160,14 +160,12 @@ export async function getPhysicalReleases(
 
   // Check each candidate for the 2-year catalog cutoff
   const releases: PhysicalRelease[] = [];
-  let skippedNonCatalog = 0;
 
   for (const movie of candidates) {
     if (releases.length >= MAX_MOVIES_DISPLAY) break;
 
     // Catalog filter: primary release_date must be 2+ years before window end
     if (!movie.release_date || !isCatalogTitle(movie.release_date, lte)) {
-      skippedNonCatalog++;
       continue;
     }
 
@@ -212,6 +210,5 @@ export async function getPhysicalReleases(
     movieIds: releases.map((r) => r.details.id),
     albumPosters,
     moviePosters,
-    _stats: { totalDiscovered: movies.length, skippedNonCatalog, included: releases.length },
-  } as PhysicalResult & { _stats: unknown };
+  };
 }
