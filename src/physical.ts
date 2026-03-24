@@ -47,7 +47,8 @@ export interface PhysicalRelease {
 }
 
 export interface PhysicalResult {
-  summaryPost: string;
+  /** Summary post(s) — may be multiple chunks if the list is long. */
+  summaryPosts: string[];
   moviePosts: string[];
   movieIds: number[];
   albumPosters: PosterImage[];
@@ -205,7 +206,7 @@ export async function getPhysicalReleases(
   const moviePosters = releases.map((r) => r.poster);
 
   return {
-    summaryPost: summaryParts[0],
+    summaryPosts: summaryParts,
     moviePosts,
     movieIds: releases.map((r) => r.details.id),
     albumPosters,

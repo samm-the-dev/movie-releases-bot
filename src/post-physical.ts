@@ -88,9 +88,11 @@ async function main(): Promise<void> {
   console.log(`Fetched ${result.albumPosters.length} album posters.`);
 
   if (DRY_RUN) {
-    console.log('\n[DRY RUN] Summary post:\n---');
-    console.log(result.summaryPost);
-    console.log('---');
+    for (let i = 0; i < result.summaryPosts.length; i++) {
+      console.log(`\n[DRY RUN] Summary post ${i + 1}/${result.summaryPosts.length}:\n---`);
+      console.log(result.summaryPosts[i]);
+      console.log('---');
+    }
     if (result.albumPosters.length > 0) {
       console.log(`Album: ${result.albumPosters.length} poster(s)`);
       for (const p of result.albumPosters) {
@@ -113,12 +115,18 @@ async function main(): Promise<void> {
   const credentials = credentialsFromEnv();
   const agent = await createClient(credentials);
 
-  // Post summary with poster album
-  const summaryResult = await postWithImages(agent, result.summaryPost, result.albumPosters);
-  console.log(`Summary posted: ${summaryResult.uri}`);
+  // Post summary chunk(s) — first chunk gets the poster album
+  let parent: { uri: string; cid: string } | undefined;
+  let root: { uri: string; cid: string } | undefined;
+  for (let i = 0; i < result.summaryPosts.length; i++) {
+    const posters = i === 0 ? result.albumPosters : [];
+    const summaryChunk = await postWithImages(agent, result.summaryPosts[i], posters, parent, root);
+    if (!root) root = summaryChunk;
+    parent = summaryChunk;
+    console.log(`Summary ${i + 1}/${result.summaryPosts.length} posted: ${summaryChunk.uri}`);
+  }
 
   // Post per-movie replies
-  let parent = summaryResult;
   for (let i = 0; i < result.moviePosts.length; i++) {
     const moviePoster = result.moviePosters[i];
     const posters = moviePoster ? [moviePoster] : [];
@@ -128,7 +136,7 @@ async function main(): Promise<void> {
       result.moviePosts[i],
       posters,
       parent,
-      summaryResult,
+      root,
     );
     parent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
