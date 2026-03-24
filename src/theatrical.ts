@@ -65,7 +65,7 @@ export function formatMovieDetail(details: TMDBMovieDetails): string {
   const runtime = formatRuntime(details.runtime);
 
   const parts = [genres, runtime].filter(Boolean);
-  const metaLine = parts.length > 0 ? parts.join(' \u00B7 ') : '';
+  const metaLine = parts.length > 0 ? parts.join(' · ') : '';
 
   const lines = [details.title];
   if (metaLine) lines.push(metaLine);
@@ -174,8 +174,8 @@ export async function getTheatricalReleases(
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
   const releaseCount = newMovies.length;
-  const header = `\uD83C\uDFAC Opening This Weekend (${formatWeekendDate(gte)})`;
-  const footer = `\uD83D\uDCFD\uFE0F #NowPlaying #Movies #Filmsky`;
+  const header = `📽️ Opening This Weekend (${formatWeekendDate(gte)})`;
+  const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines

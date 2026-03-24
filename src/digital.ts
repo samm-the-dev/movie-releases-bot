@@ -65,13 +65,13 @@ function getDigitalDateRange(referenceDate: Date = new Date()): { gte: string; l
 }
 
 /**
- * Check if a movie had a US theatrical release (type 2 or 3).
+ * Check if a movie had a wide US theatrical release (type 3).
  * Returns the theatrical release date if found, null otherwise.
  */
 async function getTheatricalDate(movieId: number): Promise<string | null> {
   const releases = await getReleaseDates(movieId, 'US');
   const theatrical = releases.find(
-    (r) => r.type === ReleaseType.THEATRICAL || r.type === ReleaseType.THEATRICAL_LIMITED,
+    (r) => r.type === ReleaseType.THEATRICAL,
   );
   return theatrical?.release_date?.slice(0, 10) ?? null;
 }
@@ -119,7 +119,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
   const runtime = formatRuntime(details.runtime);
 
   const parts = [genres, runtime].filter(Boolean);
-  const metaLine = parts.length > 0 ? parts.join(' \u00B7 ') : '';
+  const metaLine = parts.length > 0 ? parts.join(' · ') : '';
 
   const lines = [details.title];
   if (metaLine) lines.push(metaLine);
@@ -129,7 +129,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
 
   // Theatrical -> Digital date window
   if (theatricalDate && digitalDate) {
-    lines.push(`Theatrical ${formatShortDate(theatricalDate)} \u2192 Digital ${formatShortDate(digitalDate)}`);
+    lines.push(`Theatrical ${formatShortDate(theatricalDate)} → Digital ${formatShortDate(digitalDate)}`);
   } else if (digitalDate) {
     lines.push(`Digital ${formatShortDate(digitalDate)}`);
   }
@@ -180,7 +180,7 @@ export async function getDigitalReleases(
 
   // Summary post
   const lines = releases.map((r) => r.details.title);
-  const header = `\uD83D\uDCE1 Now on Digital (${formatWeekDate(referenceDate)})`;
+  const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
   const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 

@@ -1,4 +1,4 @@
-# Let's All Go to the Movies 🎬
+# Let's All Go to the Movies 📽️
 
 A Bluesky bot that posts weekly movie release announcements — what's opening in theaters and what just hit digital.
 
