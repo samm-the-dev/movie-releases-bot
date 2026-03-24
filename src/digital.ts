@@ -65,7 +65,7 @@ function getDigitalDateRange(referenceDate: Date = new Date()): { gte: string; l
 }
 
 /**
- * Check if a movie had a US theatrical release (type 2 or 3).
+ * Check if a movie had a wide US theatrical release (type 3).
  * Returns the theatrical release date if found, null otherwise.
  */
 async function getTheatricalDate(movieId: number): Promise<string | null> {
