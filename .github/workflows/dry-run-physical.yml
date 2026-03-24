@@ -1,0 +1,24 @@
+name: Dry Run Physical Releases
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Sample physical releases
+        run: npx tsx src/actions/dry-run-physical.ts
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
