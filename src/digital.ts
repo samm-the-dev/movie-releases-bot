@@ -71,7 +71,7 @@ function getDigitalDateRange(referenceDate: Date = new Date()): { gte: string; l
 async function getTheatricalDate(movieId: number): Promise<string | null> {
   const releases = await getReleaseDates(movieId, 'US');
   const theatrical = releases.find(
-    (r) => r.type === ReleaseType.THEATRICAL || r.type === ReleaseType.THEATRICAL_LIMITED,
+    (r) => r.type === ReleaseType.THEATRICAL,
   );
   return theatrical?.release_date?.slice(0, 10) ?? null;
 }
@@ -180,7 +180,7 @@ export async function getDigitalReleases(
 
   // Summary post
   const lines = releases.map((r) => r.details.title);
-  const header = `\uD83D\uDCE1 Now on Digital (${formatWeekDate(referenceDate)})`;
+  const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
   const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 
