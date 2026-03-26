@@ -181,6 +181,14 @@ export async function getDigitalReleases(
 
   if (releases.length === 0) return null;
 
+  // Most recent digital release first
+  releases.sort((a, b) => {
+    if (!a.digitalDate && !b.digitalDate) return 0;
+    if (!a.digitalDate) return 1;
+    if (!b.digitalDate) return -1;
+    return b.digitalDate.localeCompare(a.digitalDate);
+  });
+
   // Summary post
   const lines = releases.map((r) => r.details.title);
   const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
