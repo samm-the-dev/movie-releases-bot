@@ -13,6 +13,7 @@ import {
   formatRuntime,
   getMovieDetails,
   getReleaseDates,
+  getWatchProviderLink,
   ReleaseType,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
@@ -44,6 +45,7 @@ export interface DigitalRelease {
   theatricalDate: string | null;
   digitalDate: string | null;
   poster: PosterImage | null;
+  justWatchLink: string | null;
 }
 
 export interface DigitalResult {
@@ -111,7 +113,7 @@ function formatShortDate(dateStr: string): string {
 
 /** Format a per-movie detail post for a digital release. */
 export function formatDigitalDetail(release: DigitalRelease): string {
-  const { details, theatricalDate, digitalDate } = release;
+  const { details, theatricalDate, digitalDate, justWatchLink } = release;
   const genres = details.genres
     .slice(0, 2)
     .map((g) => g.name)
@@ -134,7 +136,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
     lines.push(`Digital ${formatShortDate(digitalDate)}`);
   }
 
-  lines.push(`https://www.themoviedb.org/movie/${details.id}`);
+  lines.push(justWatchLink ?? `https://www.themoviedb.org/movie/${details.id}`);
   return lines.join('\n');
 }
 
@@ -167,13 +169,14 @@ export async function getDigitalReleases(
     const theatricalDate = await getTheatricalDate(movie.id);
     if (!theatricalDate) continue; // Skip films without theatrical history
 
-    const [details, digitalDate, poster] = await Promise.all([
+    const [details, digitalDate, poster, justWatchLink] = await Promise.all([
       getMovieDetails(movie.id),
       getDigitalDate(movie.id),
       fetchPoster(movie.title, movie.poster_path),
+      getWatchProviderLink(movie.id),
     ]);
 
-    releases.push({ details, theatricalDate, digitalDate, poster });
+    releases.push({ details, theatricalDate, digitalDate, poster, justWatchLink });
   }
 
   if (releases.length === 0) return null;
