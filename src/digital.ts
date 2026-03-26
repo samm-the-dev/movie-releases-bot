@@ -67,24 +67,17 @@ function getDigitalDateRange(referenceDate: Date = new Date()): { gte: string; l
 }
 
 /**
- * Check if a movie had a wide US theatrical release (type 3).
- * Returns the theatrical release date if found, null otherwise.
+ * Fetch US release dates once and return both theatrical and digital dates.
+ * Avoids calling /release_dates twice per candidate.
  */
-async function getTheatricalDate(movieId: number): Promise<string | null> {
+async function getReleaseDatePair(movieId: number): Promise<{ theatricalDate: string | null; digitalDate: string | null }> {
   const releases = await getReleaseDates(movieId, 'US');
-  const theatrical = releases.find(
-    (r) => r.type === ReleaseType.THEATRICAL,
-  );
-  return theatrical?.release_date?.slice(0, 10) ?? null;
-}
-
-/**
- * Get the US digital release date for a movie.
- */
-async function getDigitalDate(movieId: number): Promise<string | null> {
-  const releases = await getReleaseDates(movieId, 'US');
+  const theatrical = releases.find((r) => r.type === ReleaseType.THEATRICAL);
   const digital = releases.find((r) => r.type === ReleaseType.DIGITAL);
-  return digital?.release_date?.slice(0, 10) ?? null;
+  return {
+    theatricalDate: theatrical?.release_date?.slice(0, 10) ?? null,
+    digitalDate: digital?.release_date?.slice(0, 10) ?? null,
+  };
 }
 
 /** Fetch a poster image from TMDB. */
@@ -166,12 +159,11 @@ export async function getDigitalReleases(
   for (const movie of candidates) {
     if (releases.length >= MAX_MOVIES_DISPLAY) break;
 
-    const theatricalDate = await getTheatricalDate(movie.id);
+    const { theatricalDate, digitalDate } = await getReleaseDatePair(movie.id);
     if (!theatricalDate) continue; // Skip films without theatrical history
 
-    const [details, digitalDate, poster, justWatchLink] = await Promise.all([
+    const [details, poster, justWatchLink] = await Promise.all([
       getMovieDetails(movie.id),
-      getDigitalDate(movie.id),
       fetchPoster(movie.title, movie.poster_path),
       getWatchProviderLink(movie.id),
     ]);

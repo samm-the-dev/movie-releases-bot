@@ -39,12 +39,19 @@ function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetail
 describe('formatMovieLine', () => {
   it('formats as date: title', () => {
     const line = formatMovieLine(makeMovie({ title: 'Sinners' }));
-    expect(line).toBe('Mar. 27: Sinners');
+    expect(line).toBe('March 27: Sinners'); // March is not abbreviated in AP style
   });
 
   it('uses the movie release date', () => {
     const line = formatMovieLine(makeMovie({ release_date: '2026-04-01' }));
-    expect(line).toBe('Apr. 1: Test Movie');
+    expect(line).toBe('April 1: Test Movie'); // April is not abbreviated in AP style
+  });
+
+  it('does not add a period to non-abbreviated months', () => {
+    // May, June, July, March, April are spelled out in AP style
+    expect(formatMovieLine(makeMovie({ release_date: '2026-05-01' }))).toBe('May 1: Test Movie');
+    expect(formatMovieLine(makeMovie({ release_date: '2026-06-01' }))).toBe('June 1: Test Movie');
+    expect(formatMovieLine(makeMovie({ release_date: '2026-07-01' }))).toBe('July 1: Test Movie');
   });
 });
 
@@ -56,7 +63,7 @@ describe('formatMovieDetail', () => {
 
   it('puts date before genre in meta line', () => {
     const text = formatMovieDetail(makeDetails(), '2026-04-01');
-    expect(text).toBe('Test Movie\nApr. 1 \u2022 Action/Thriller \u2022 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
+    expect(text).toBe('Test Movie\nApril 1 \u2022 Action/Thriller \u2022 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
   it('omits date segment when not provided', () => {

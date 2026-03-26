@@ -77,11 +77,16 @@ export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: strin
   return lines.join('\n');
 }
 
-/** Format a date string (YYYY-MM-DD) as "Mon. D" (e.g. "Apr. 1"). */
+// AP-style month abbreviations: short months get a period, long ones don't.
+const AP_MONTHS = [
+  'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
+  'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
+];
+
+/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Apr. 1", "May 3"). */
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
-  const s = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  return s.replace(/^(\w+) /, '$1. ');
+  return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
 }
 
 /** A poster image to upload to Bluesky. */
