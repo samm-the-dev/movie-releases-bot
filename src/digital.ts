@@ -181,35 +181,35 @@ export async function getDigitalReleases(
 
   if (releases.length === 0) return null;
 
+  // Every result came from a digital-release discover query so digitalDate should
+  // always be present; drop any stale TMDB entries where it's missing.
+  const dated = releases.filter((r): r is DigitalRelease & { digitalDate: string } => r.digitalDate !== null);
+  if (dated.length === 0) return null;
+
   // Most recent digital release first
-  releases.sort((a, b) => {
-    if (!a.digitalDate && !b.digitalDate) return 0;
-    if (!a.digitalDate) return 1;
-    if (!b.digitalDate) return -1;
-    return b.digitalDate.localeCompare(a.digitalDate);
-  });
+  dated.sort((a, b) => b.digitalDate.localeCompare(a.digitalDate));
 
   // Summary post
-  const lines = releases.map((r) => r.details.title);
+  const lines = dated.map((r) => r.details.title);
   const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
   const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 
   // Per-movie posts
-  const moviePosts = releases.map((r) => formatDigitalDetail(r));
+  const moviePosts = dated.map((r) => formatDigitalDetail(r));
 
   // Posters
-  const albumPosters = releases
+  const albumPosters = dated
     .map((r) => r.poster)
     .filter((p): p is PosterImage => p !== null)
     .slice(0, MAX_ALBUM_IMAGES);
 
-  const moviePosters = releases.map((r) => r.poster);
+  const moviePosters = dated.map((r) => r.poster);
 
   return {
     summaryPost: summaryParts[0],
     moviePosts,
-    movieIds: releases.map((r) => r.details.id),
+    movieIds: dated.map((r) => r.details.id),
     albumPosters,
     moviePosters,
   };
