@@ -14,6 +14,7 @@ import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 
 const STATE_FILE = 'state/seen_theatrical.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
+const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
 
 /**
  * Upload poster images and return the blob refs for embedding.
@@ -76,7 +77,7 @@ async function postWithImages(
 async function main(): Promise<void> {
   let state = loadState(STATE_FILE);
 
-  const result = await getTheatricalReleases(state);
+  const result = await getTheatricalReleases(IGNORE_SEEN ? {} : state);
 
   if (!result) {
     console.log('No new theatrical releases to post.');

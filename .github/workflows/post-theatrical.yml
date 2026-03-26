@@ -12,6 +12,10 @@ on:
         description: 'Dry run (preview without posting)'
         type: boolean
         default: true
+      ignore_seen:
+        description: 'Ignore seen state (show all movies, even already posted)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -38,6 +42,7 @@ jobs:
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
           DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+          IGNORE_SEEN: ${{ (github.event_name == 'workflow_dispatch' && inputs.ignore_seen) && '1' || '0' }}
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         if: env.DRY_RUN != '1'
