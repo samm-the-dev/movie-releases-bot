@@ -2,8 +2,10 @@ name: Post Theatrical Releases
 
 on:
   schedule:
-    # Thursday 3:30 PM UTC = 10:30 AM CT
+    # Thursday: three attempts (1:30 PM, 3:30 PM, 5:30 PM UTC) for scheduler reliability
+    - cron: '30 13 * * 4'
     - cron: '30 15 * * 4'
+    - cron: '30 17 * * 4'
   workflow_dispatch:
     inputs:
       dry_run:

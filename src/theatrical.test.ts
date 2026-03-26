@@ -60,6 +60,19 @@ describe('formatMovieDetail', () => {
     expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
+  it('includes opening date when provided', () => {
+    const text = formatMovieDetail(makeDetails(), '2026-04-01');
+    expect(text).toContain('Opens Apr 1');
+    expect(text).toContain('https://www.themoviedb.org/movie/1');
+    // date appears before the link
+    expect(text.indexOf('Opens Apr 1')).toBeLessThan(text.indexOf('https://'));
+  });
+
+  it('omits opening date when not provided', () => {
+    const text = formatMovieDetail(makeDetails());
+    expect(text).not.toContain('Opens');
+  });
+
   it('handles multiple directors', () => {
     const text = formatMovieDetail(makeDetails({ directors: ['Alice', 'Bob'] }));
     expect(text).toContain('Dir. Alice, Bob');

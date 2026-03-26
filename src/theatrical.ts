@@ -58,9 +58,9 @@ export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>)
 
 /**
  * Format a focused per-movie post with rich details.
- * Includes title, genre, runtime, and director(s).
+ * Includes title, genre, runtime, director(s), and opening date.
  */
-export function formatMovieDetail(details: TMDBMovieDetails): string {
+export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: string | null): string {
   const genres = formatDetailGenres(details);
   const runtime = formatRuntime(details.runtime);
 
@@ -72,13 +72,16 @@ export function formatMovieDetail(details: TMDBMovieDetails): string {
   if (details.directors.length > 0) {
     lines.push(`Dir. ${details.directors.join(', ')}`);
   }
+  if (releaseDate) {
+    lines.push(`Opens ${formatShortDate(releaseDate)}`);
+  }
   lines.push(`https://www.themoviedb.org/movie/${details.id}`);
 
   return lines.join('\n');
 }
 
-/** Format the weekend date for the header. */
-function formatWeekendDate(dateStr: string): string {
+/** Format a date string (YYYY-MM-DD) as "Mon D" (e.g. "Mar 26"). */
+function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
@@ -173,15 +176,14 @@ export async function getTheatricalReleases(
 
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
-  const releaseCount = newMovies.length;
-  const header = `📽️ Opening This Weekend (${formatWeekendDate(gte)})`;
+  const header = `📽️ Opening This Week (${formatShortDate(gte)}–${formatShortDate(lte)})`;
   const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
 
   // Per-movie detail posts
-  const moviePosts = enriched.map((e) => formatMovieDetail(e.details));
+  const moviePosts = enriched.map((e) => formatMovieDetail(e.details, e.movie.release_date));
 
   // Album posters (up to 4 for summary)
   const albumPosters = enriched
