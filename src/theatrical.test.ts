@@ -37,37 +37,32 @@ function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetail
 }
 
 describe('formatMovieLine', () => {
-  it('formats title with date and genres', () => {
-    const line = formatMovieLine(makeMovie({ title: 'Sinners' }), genreMap);
-    expect(line).toBe('Mar. 27 · Sinners (Action/Thriller)');
+  it('formats as date: title', () => {
+    const line = formatMovieLine(makeMovie({ title: 'Sinners' }));
+    expect(line).toBe('Mar. 27: Sinners');
   });
 
-  it('includes date even when no genres', () => {
-    const line = formatMovieLine(makeMovie({ genre_ids: [] }), genreMap);
-    expect(line).toBe('Mar. 27 · Test Movie');
-  });
-
-  it('limits to 2 genres', () => {
-    const movie = makeMovie({ genre_ids: [28, 27, 53, 35] });
-    const line = formatMovieLine(movie, genreMap);
-    expect(line).toBe('Mar. 27 · Test Movie (Action/Horror)');
+  it('uses the movie release date', () => {
+    const line = formatMovieLine(makeMovie({ release_date: '2026-04-01' }));
+    expect(line).toBe('Apr. 1: Test Movie');
   });
 });
 
 describe('formatMovieDetail', () => {
   it('formats full details with title, genre, runtime, director, and TMDB link', () => {
     const text = formatMovieDetail(makeDetails());
-    expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
+    expect(text).toBe('Test Movie\nAction/Thriller \u2022 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
-  it('puts opening date before genre in meta line', () => {
+  it('puts date before genre in meta line', () => {
     const text = formatMovieDetail(makeDetails(), '2026-04-01');
-    expect(text).toBe('Test Movie\nOpens Apr. 1 \u00B7 Action/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
+    expect(text).toBe('Test Movie\nApr. 1 \u2022 Action/Thriller \u2022 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
-  it('omits opening date when not provided', () => {
+  it('omits date segment when not provided', () => {
     const text = formatMovieDetail(makeDetails());
-    expect(text).not.toContain('Opens');
+    expect(text).toContain('Action/Thriller \u2022 2h 0m');
+    expect(text).not.toMatch(/\w+\. \d+/); // no date prefix
   });
 
   it('handles multiple directors', () => {
@@ -82,7 +77,7 @@ describe('formatMovieDetail', () => {
 
   it('handles no directors', () => {
     const text = formatMovieDetail(makeDetails({ directors: [] }));
-    expect(text).toContain('Test Movie\nAction/Thriller \u00B7 2h 0m\nhttps://');
+    expect(text).toContain('Test Movie\nAction/Thriller \u2022 2h 0m\nhttps://');
     expect(text).not.toContain('Dir.');
   });
 

@@ -50,12 +50,9 @@ function formatDetailGenres(details: TMDBMovieDetails): string {
     .join('/');
 }
 
-/** Format a single movie line for the summary bullet list. Date + title + genre. */
-export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>): string {
-  const date = formatShortDate(movie.release_date);
-  const genres = formatGenres(movie.genre_ids, genreMap);
-  const titleWithGenres = genres ? `${movie.title} (${genres})` : movie.title;
-  return `${date} · ${titleWithGenres}`;
+/** Format a single movie line for the summary bullet list. Date: title. */
+export function formatMovieLine(movie: TMDBMovie): string {
+  return `${formatShortDate(movie.release_date)}: ${movie.title}`;
 }
 
 /**
@@ -65,10 +62,10 @@ export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>)
 export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: string | null): string {
   const genres = formatDetailGenres(details);
   const runtime = formatRuntime(details.runtime);
-  const dateStr = releaseDate ? `Opens ${formatShortDate(releaseDate)}` : null;
+  const dateStr = releaseDate ? formatShortDate(releaseDate) : null;
 
   const parts = [dateStr, genres, runtime].filter(Boolean);
-  const metaLine = parts.length > 0 ? parts.join(' · ') : '';
+  const metaLine = parts.length > 0 ? parts.join(' \u2022 ') : '';
 
   const lines = [details.title];
   if (metaLine) lines.push(metaLine);
@@ -177,7 +174,7 @@ export async function getTheatricalReleases(
   );
 
   // Summary post with bullet list + hashtags
-  const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
+  const lines = newMovies.map((m) => formatMovieLine(m));
   const header = `📽️ Opening This Week (${formatShortDate(gte)}–${formatShortDate(lte)})`;
   const footer = `#NowPlaying #Movies #Filmsky`;
 
