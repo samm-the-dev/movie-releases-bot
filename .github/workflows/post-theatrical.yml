@@ -2,10 +2,10 @@ name: Post Theatrical Releases
 
 on:
   schedule:
-    # Thursday: three attempts (1:30 PM, 3:30 PM, 5:30 PM UTC) for scheduler reliability
-    - cron: '30 13 * * 4'
-    - cron: '30 15 * * 4'
-    - cron: '30 17 * * 4'
+    # Thursday: three attempts at odd minutes to avoid GitHub scheduler congestion
+    - cron: '17 13 * * 4'
+    - cron: '43 15 * * 4'
+    - cron: '11 17 * * 4'
   workflow_dispatch:
     inputs:
       dry_run:
