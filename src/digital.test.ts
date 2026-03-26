@@ -16,6 +16,7 @@ function makeRelease(overrides: Partial<DigitalRelease> = {}): DigitalRelease {
     theatricalDate: '2026-01-10',
     digitalDate: '2026-03-25',
     poster: null,
+    justWatchLink: null,
     ...overrides,
   };
 }
@@ -43,6 +44,15 @@ describe('formatDigitalDetail', () => {
     expect(text).not.toContain('Theatrical');
     expect(text).not.toContain('Digital');
     expect(text).toContain('Companion');
+  });
+
+  it('uses JustWatch link when available, TMDB link as fallback', () => {
+    const withJW = formatDigitalDetail(makeRelease({ justWatchLink: 'https://www.justwatch.com/us/movie/companion' }));
+    expect(withJW).toContain('https://www.justwatch.com/us/movie/companion');
+    expect(withJW).not.toContain('themoviedb');
+
+    const withoutJW = formatDigitalDetail(makeRelease());
+    expect(withoutJW).toContain('https://www.themoviedb.org/movie/42');
   });
 
   it('handles no runtime', () => {

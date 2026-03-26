@@ -184,6 +184,22 @@ export function formatRuntime(minutes: number | null): string | null {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+interface TMDBWatchProvidersResponse {
+  id: number;
+  results: Record<string, { link?: string } | undefined>;
+}
+
+/**
+ * Get the JustWatch URL for a movie in a given region.
+ * TMDB's watch/providers data is sourced from JustWatch; the link field
+ * points directly to the movie's JustWatch page.
+ * Returns null if no watch provider data exists for the region.
+ */
+export async function getWatchProviderLink(movieId: number, region = 'US'): Promise<string | null> {
+  const data = await tmdbFetch<TMDBWatchProvidersResponse>(`/movie/${movieId}/watch/providers`);
+  return data.results[region]?.link ?? null;
+}
+
 /** Format a Date as YYYY-MM-DD for TMDB API params. */
 export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);

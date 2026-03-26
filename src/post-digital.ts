@@ -14,6 +14,7 @@ import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 
 const STATE_FILE = 'state/seen_digital.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
+const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
 
 /**
  * Upload poster images and return blob refs.
@@ -76,7 +77,7 @@ async function postWithImages(
 async function main(): Promise<void> {
   let state = loadState(STATE_FILE);
 
-  const result = await getDigitalReleases(state);
+  const result = await getDigitalReleases(IGNORE_SEEN ? {} : state);
 
   if (!result) {
     console.log('No new digital releases to post.');

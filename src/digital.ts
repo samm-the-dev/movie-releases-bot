@@ -13,6 +13,7 @@ import {
   formatRuntime,
   getMovieDetails,
   getReleaseDates,
+  getWatchProviderLink,
   ReleaseType,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
@@ -44,6 +45,7 @@ export interface DigitalRelease {
   theatricalDate: string | null;
   digitalDate: string | null;
   poster: PosterImage | null;
+  justWatchLink: string | null;
 }
 
 export interface DigitalResult {
@@ -65,24 +67,17 @@ function getDigitalDateRange(referenceDate: Date = new Date()): { gte: string; l
 }
 
 /**
- * Check if a movie had a wide US theatrical release (type 3).
- * Returns the theatrical release date if found, null otherwise.
+ * Fetch US release dates once and return both theatrical and digital dates.
+ * Avoids calling /release_dates twice per candidate.
  */
-async function getTheatricalDate(movieId: number): Promise<string | null> {
+async function getReleaseDatePair(movieId: number): Promise<{ theatricalDate: string | null; digitalDate: string | null }> {
   const releases = await getReleaseDates(movieId, 'US');
-  const theatrical = releases.find(
-    (r) => r.type === ReleaseType.THEATRICAL,
-  );
-  return theatrical?.release_date?.slice(0, 10) ?? null;
-}
-
-/**
- * Get the US digital release date for a movie.
- */
-async function getDigitalDate(movieId: number): Promise<string | null> {
-  const releases = await getReleaseDates(movieId, 'US');
+  const theatrical = releases.find((r) => r.type === ReleaseType.THEATRICAL);
   const digital = releases.find((r) => r.type === ReleaseType.DIGITAL);
-  return digital?.release_date?.slice(0, 10) ?? null;
+  return {
+    theatricalDate: theatrical?.release_date?.slice(0, 10) ?? null,
+    digitalDate: digital?.release_date?.slice(0, 10) ?? null,
+  };
 }
 
 /** Fetch a poster image from TMDB. */
@@ -111,7 +106,7 @@ function formatShortDate(dateStr: string): string {
 
 /** Format a per-movie detail post for a digital release. */
 export function formatDigitalDetail(release: DigitalRelease): string {
-  const { details, theatricalDate, digitalDate } = release;
+  const { details, theatricalDate, digitalDate, justWatchLink } = release;
   const genres = details.genres
     .slice(0, 2)
     .map((g) => g.name)
@@ -134,7 +129,7 @@ export function formatDigitalDetail(release: DigitalRelease): string {
     lines.push(`Digital ${formatShortDate(digitalDate)}`);
   }
 
-  lines.push(`https://www.themoviedb.org/movie/${details.id}`);
+  lines.push(justWatchLink ?? `https://www.themoviedb.org/movie/${details.id}`);
   return lines.join('\n');
 }
 
@@ -164,41 +159,50 @@ export async function getDigitalReleases(
   for (const movie of candidates) {
     if (releases.length >= MAX_MOVIES_DISPLAY) break;
 
-    const theatricalDate = await getTheatricalDate(movie.id);
+    const { theatricalDate, digitalDate } = await getReleaseDatePair(movie.id);
     if (!theatricalDate) continue; // Skip films without theatrical history
+    if (!digitalDate) continue; // Skip stale TMDB entries missing a digital date (don't count toward limit)
 
-    const [details, digitalDate, poster] = await Promise.all([
+    const [details, poster, justWatchLink] = await Promise.all([
       getMovieDetails(movie.id),
-      getDigitalDate(movie.id),
       fetchPoster(movie.title, movie.poster_path),
+      getWatchProviderLink(movie.id),
     ]);
 
-    releases.push({ details, theatricalDate, digitalDate, poster });
+    releases.push({ details, theatricalDate, digitalDate, poster, justWatchLink });
   }
 
   if (releases.length === 0) return null;
 
+  // Every result came from a digital-release discover query so digitalDate should
+  // always be present; drop any stale TMDB entries where it's missing.
+  const dated = releases.filter((r): r is DigitalRelease & { digitalDate: string } => r.digitalDate !== null);
+  if (dated.length === 0) return null;
+
+  // Most recent digital release first
+  dated.sort((a, b) => b.digitalDate.localeCompare(a.digitalDate));
+
   // Summary post
-  const lines = releases.map((r) => r.details.title);
+  const lines = dated.map((r) => r.details.title);
   const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
   const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 
   // Per-movie posts
-  const moviePosts = releases.map((r) => formatDigitalDetail(r));
+  const moviePosts = dated.map((r) => formatDigitalDetail(r));
 
   // Posters
-  const albumPosters = releases
+  const albumPosters = dated
     .map((r) => r.poster)
     .filter((p): p is PosterImage => p !== null)
     .slice(0, MAX_ALBUM_IMAGES);
 
-  const moviePosters = releases.map((r) => r.poster);
+  const moviePosters = dated.map((r) => r.poster);
 
   return {
     summaryPost: summaryParts[0],
     moviePosts,
-    movieIds: releases.map((r) => r.details.id),
+    movieIds: dated.map((r) => r.details.id),
     albumPosters,
     moviePosters,
   };

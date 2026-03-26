@@ -50,22 +50,22 @@ function formatDetailGenres(details: TMDBMovieDetails): string {
     .join('/');
 }
 
-/** Format a single movie line for the summary bullet list. Title + genre only. */
-export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>): string {
-  const genres = formatGenres(movie.genre_ids, genreMap);
-  return genres ? `${movie.title} (${genres})` : movie.title;
+/** Format a single movie line for the summary bullet list. Date: title. */
+export function formatMovieLine(movie: TMDBMovie): string {
+  return `${formatShortDate(movie.release_date)}: ${movie.title}`;
 }
 
 /**
  * Format a focused per-movie post with rich details.
- * Includes title, genre, runtime, and director(s).
+ * Includes title, genre, runtime, director(s), and opening date.
  */
-export function formatMovieDetail(details: TMDBMovieDetails): string {
+export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: string | null): string {
   const genres = formatDetailGenres(details);
   const runtime = formatRuntime(details.runtime);
+  const dateStr = releaseDate ? formatShortDate(releaseDate) : null;
 
-  const parts = [genres, runtime].filter(Boolean);
-  const metaLine = parts.length > 0 ? parts.join(' · ') : '';
+  const parts = [dateStr, genres, runtime].filter(Boolean);
+  const metaLine = parts.length > 0 ? parts.join(' \u2022 ') : '';
 
   const lines = [details.title];
   if (metaLine) lines.push(metaLine);
@@ -77,10 +77,16 @@ export function formatMovieDetail(details: TMDBMovieDetails): string {
   return lines.join('\n');
 }
 
-/** Format the weekend date for the header. */
-function formatWeekendDate(dateStr: string): string {
+// AP-style month abbreviations: short months get a period, long ones don't.
+const AP_MONTHS = [
+  'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
+  'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
+];
+
+/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Apr. 1", "May 3"). */
+function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
 }
 
 /** A poster image to upload to Bluesky. */
@@ -154,7 +160,8 @@ export async function getTheatricalReleases(
   const newMovies = movies
     .filter((m) => !isTracked(state, String(m.id)))
     .filter((m) => m.popularity >= MIN_POPULARITY)
-    .slice(0, MAX_MOVIES_DISPLAY);
+    .slice(0, MAX_MOVIES_DISPLAY)
+    .sort((a, b) => a.release_date.localeCompare(b.release_date));
 
   if (newMovies.length === 0) return null;
 
@@ -172,16 +179,15 @@ export async function getTheatricalReleases(
   );
 
   // Summary post with bullet list + hashtags
-  const lines = newMovies.map((m) => formatMovieLine(m, genreMap));
-  const releaseCount = newMovies.length;
-  const header = `📽️ Opening This Weekend (${formatWeekendDate(gte)})`;
+  const lines = newMovies.map((m) => formatMovieLine(m));
+  const header = `📽️ Opening This Week (${formatShortDate(gte)}–${formatShortDate(lte)})`;
   const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
   const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
 
   // Per-movie detail posts
-  const moviePosts = enriched.map((e) => formatMovieDetail(e.details));
+  const moviePosts = enriched.map((e) => formatMovieDetail(e.details, e.movie.release_date));
 
   // Album posters (up to 4 for summary)
   const albumPosters = enriched
