@@ -161,6 +161,7 @@ export async function getDigitalReleases(
 
     const { theatricalDate, digitalDate } = await getReleaseDatePair(movie.id);
     if (!theatricalDate) continue; // Skip films without theatrical history
+    if (!digitalDate) continue; // Skip stale TMDB entries missing a digital date (don't count toward limit)
 
     const [details, poster, justWatchLink] = await Promise.all([
       getMovieDetails(movie.id),
