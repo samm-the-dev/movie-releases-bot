@@ -50,10 +50,12 @@ function formatDetailGenres(details: TMDBMovieDetails): string {
     .join('/');
 }
 
-/** Format a single movie line for the summary bullet list. Title + genre only. */
+/** Format a single movie line for the summary bullet list. Date + title + genre. */
 export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>): string {
+  const date = formatShortDate(movie.release_date);
   const genres = formatGenres(movie.genre_ids, genreMap);
-  return genres ? `${movie.title} (${genres})` : movie.title;
+  const titleWithGenres = genres ? `${movie.title} (${genres})` : movie.title;
+  return `${date} · ${titleWithGenres}`;
 }
 
 /**
@@ -63,8 +65,9 @@ export function formatMovieLine(movie: TMDBMovie, genreMap: Map<number, string>)
 export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: string | null): string {
   const genres = formatDetailGenres(details);
   const runtime = formatRuntime(details.runtime);
+  const dateStr = releaseDate ? `Opens ${formatShortDate(releaseDate)}` : null;
 
-  const parts = [genres, runtime].filter(Boolean);
+  const parts = [dateStr, genres, runtime].filter(Boolean);
   const metaLine = parts.length > 0 ? parts.join(' · ') : '';
 
   const lines = [details.title];
@@ -72,18 +75,16 @@ export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: strin
   if (details.directors.length > 0) {
     lines.push(`Dir. ${details.directors.join(', ')}`);
   }
-  if (releaseDate) {
-    lines.push(`Opens ${formatShortDate(releaseDate)}`);
-  }
   lines.push(`https://www.themoviedb.org/movie/${details.id}`);
 
   return lines.join('\n');
 }
 
-/** Format a date string (YYYY-MM-DD) as "Mon D" (e.g. "Mar 26"). */
+/** Format a date string (YYYY-MM-DD) as "Mon. D" (e.g. "Apr. 1"). */
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const s = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return s.replace(/^(\w+) /, '$1. ');
 }
 
 /** A poster image to upload to Bluesky. */
@@ -157,7 +158,8 @@ export async function getTheatricalReleases(
   const newMovies = movies
     .filter((m) => !isTracked(state, String(m.id)))
     .filter((m) => m.popularity >= MIN_POPULARITY)
-    .slice(0, MAX_MOVIES_DISPLAY);
+    .slice(0, MAX_MOVIES_DISPLAY)
+    .sort((a, b) => a.release_date.localeCompare(b.release_date));
 
   if (newMovies.length === 0) return null;
 

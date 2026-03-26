@@ -37,20 +37,20 @@ function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetail
 }
 
 describe('formatMovieLine', () => {
-  it('formats title with genres', () => {
+  it('formats title with date and genres', () => {
     const line = formatMovieLine(makeMovie({ title: 'Sinners' }), genreMap);
-    expect(line).toBe('Sinners (Action/Thriller)');
+    expect(line).toBe('Mar. 27 · Sinners (Action/Thriller)');
   });
 
-  it('returns title only when no genres', () => {
+  it('includes date even when no genres', () => {
     const line = formatMovieLine(makeMovie({ genre_ids: [] }), genreMap);
-    expect(line).toBe('Test Movie');
+    expect(line).toBe('Mar. 27 · Test Movie');
   });
 
   it('limits to 2 genres', () => {
     const movie = makeMovie({ genre_ids: [28, 27, 53, 35] });
     const line = formatMovieLine(movie, genreMap);
-    expect(line).toBe('Test Movie (Action/Horror)');
+    expect(line).toBe('Mar. 27 · Test Movie (Action/Horror)');
   });
 });
 
@@ -60,12 +60,9 @@ describe('formatMovieDetail', () => {
     expect(text).toBe('Test Movie\nAction/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
-  it('includes opening date when provided', () => {
+  it('puts opening date before genre in meta line', () => {
     const text = formatMovieDetail(makeDetails(), '2026-04-01');
-    expect(text).toContain('Opens Apr 1');
-    expect(text).toContain('https://www.themoviedb.org/movie/1');
-    // date appears before the link
-    expect(text.indexOf('Opens Apr 1')).toBeLessThan(text.indexOf('https://'));
+    expect(text).toBe('Test Movie\nOpens Apr. 1 \u00B7 Action/Thriller \u00B7 2h 0m\nDir. Test Director\nhttps://www.themoviedb.org/movie/1');
   });
 
   it('omits opening date when not provided', () => {
