@@ -91,6 +91,15 @@ Available on: Apple TV, Amazon, Vudu
 - Standalone bot account or personal account?
 - How does this integrate with the existing project seed? Need to audit what's already built.
 
+## Phase 3: Trailer Posts (Implemented)
+
+A Wednesday job scans popular movies for recently-published official trailers via TMDB's `/movie/{id}/videos` endpoint (fetched alongside credits using `append_to_response`). Trailers are posted as YouTube link card embeds (`app.bsky.embed.external`) with thumbnails fetched from `i.ytimg.com`. Theatrical and digital detail replies also use trailer link cards when available, falling back to poster images.
+
+- **Data source**: TMDB videos (YouTube keys, publish dates, official flag)
+- **Trailer selection**: Official English YouTube trailers, preferring "Trailer" over "Teaser", most recently published
+- **Cadence**: Wednesdays (fills the gap between Tuesday digital and Thursday theatrical)
+- **State tracking**: `state/seen_trailers.json` keyed by `trailer-{movieId}`
+
 ## Effort Estimate
 - **MVP (theatrical releases only)**: 1 session. TMDB API is excellent and well-documented.
 - **Digital release tracking**: 1-2 more sessions for the watchlist system and type-4 detection logic.

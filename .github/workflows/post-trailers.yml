@@ -1,0 +1,53 @@
+name: Post New Trailers
+
+on:
+  schedule:
+    # Wednesday: three attempts at odd minutes to avoid GitHub scheduler congestion
+    - cron: '23 13 * * 3'
+    - cron: '47 15 * * 3'
+    - cron: '09 17 * * 3'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview without posting)'
+        type: boolean
+        default: true
+      ignore_seen:
+        description: 'Ignore seen state (show all trailers, even already posted)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Post to Bluesky
+        run: npx tsx src/post-trailers.ts
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+          IGNORE_SEEN: ${{ (github.event_name == 'workflow_dispatch' && inputs.ignore_seen) && '1' || '0' }}
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        if: env.DRY_RUN != '1'
+        with:
+          commit_message: 'update trailer seen IDs [skip ci]'
+          file_pattern: 'state/*.json'
+        env:
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}

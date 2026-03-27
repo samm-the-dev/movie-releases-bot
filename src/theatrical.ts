@@ -99,7 +99,7 @@ export interface PosterImage {
   alt: string;
 }
 
-/** A movie with its fetched details and poster. */
+/** A movie with its fetched details, poster, and trailer. */
 export interface EnrichedMovie {
   movie: TMDBMovie;
   details: TMDBMovieDetails;
@@ -113,10 +113,16 @@ export interface TheatricalResult {
   moviePosts: string[];
   /** TMDB IDs of movies included in the posts. */
   movieIds: number[];
+  /** Movie titles for link card embeds. */
+  movieTitles: string[];
+  /** Trailer names from TMDB (e.g. "Official Trailer", "Teaser"). */
+  trailerNames: string[];
   /** Poster album for the summary post (up to 4). */
   albumPosters: PosterImage[];
-  /** Individual posters for per-movie reply posts. */
+  /** Individual posters for per-movie reply posts (fallback when no trailer). */
   moviePosters: (PosterImage | null)[];
+  /** YouTube trailer URLs per movie (null when unavailable). */
+  trailerUrls: (string | null)[];
 }
 
 /**
@@ -198,11 +204,19 @@ export async function getTheatricalReleases(
   // Individual posters for replies
   const moviePosters = enriched.map((e) => e.poster);
 
+  // Per-movie metadata for posting layer
+  const movieTitles = enriched.map((e) => e.details.title);
+  const trailerUrls = enriched.map((e) => e.details.trailerUrl);
+  const trailerNames = enriched.map((e) => e.details.trailerName ?? 'Official Trailer');
+
   return {
     summaryPost,
     moviePosts,
     movieIds: newMovies.map((m) => m.id),
+    movieTitles,
+    trailerNames,
     albumPosters,
     moviePosters,
+    trailerUrls,
   };
 }

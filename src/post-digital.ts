@@ -4,8 +4,8 @@
  * Discovers films that recently hit digital/VOD after a theatrical run,
  * posts a summary with poster album + per-movie reply thread.
  */
-import { RichText, type AtpAgent } from '@atproto/api';
-import { getDigitalReleases, type PosterImage } from './digital.js';
+import { getDigitalReleases } from './digital.js';
+import { postWithImages, postWithTrailer } from './post-helpers.js';
 import {
   createClient,
   credentialsFromEnv,
@@ -15,64 +15,6 @@ import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 const STATE_FILE = 'state/seen_digital.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
 const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
-
-/**
- * Upload poster images and return blob refs.
- */
-async function uploadImages(
-  agent: AtpAgent,
-  posters: PosterImage[],
-): Promise<Array<{ alt: string; image: unknown }>> {
-  const images = [];
-  for (const poster of posters) {
-    const response = await agent.uploadBlob(poster.data, {
-      encoding: poster.mimeType,
-    });
-    images.push({
-      alt: poster.alt,
-      image: response.data.blob,
-    });
-  }
-  return images;
-}
-
-/**
- * Post text with optional image embed.
- */
-async function postWithImages(
-  agent: AtpAgent,
-  text: string,
-  posters: PosterImage[],
-  replyTo?: { uri: string; cid: string },
-  root?: { uri: string; cid: string },
-): Promise<{ uri: string; cid: string }> {
-  const rt = new RichText({ text });
-  await rt.detectFacets(agent);
-
-  const postParams: Parameters<typeof agent.post>[0] = {
-    text: rt.text,
-    facets: rt.facets,
-    createdAt: new Date().toISOString(),
-  };
-
-  if (posters.length > 0) {
-    const images = await uploadImages(agent, posters);
-    postParams.embed = {
-      $type: 'app.bsky.embed.images',
-      images: images as typeof postParams.embed extends { images: infer I } ? I : never,
-    } as typeof postParams.embed;
-  }
-
-  if (replyTo) {
-    postParams.reply = {
-      root: root ?? replyTo,
-      parent: replyTo,
-    };
-  }
-
-  const response = await agent.post(postParams);
-  return { uri: response.uri, cid: response.cid };
-}
 
 async function main(): Promise<void> {
   let state = loadState(STATE_FILE);
@@ -101,9 +43,13 @@ async function main(): Promise<void> {
     for (let i = 0; i < result.moviePosts.length; i++) {
       console.log(`\n--- Reply ${i + 1} ---`);
       console.log(result.moviePosts[i]);
+      const trailer = result.trailerUrls[i];
+      if (trailer) {
+        console.log(`Trailer: ${trailer}`);
+      }
       const poster = result.moviePosters[i];
-      if (poster) {
-        console.log(`Poster: ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
+      if (poster && !trailer) {
+        console.log(`Poster (fallback): ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
       }
       console.log('---');
     }
@@ -117,29 +63,48 @@ async function main(): Promise<void> {
   const summaryResult = await postWithImages(agent, result.summaryPost, result.albumPosters);
   console.log(`Summary posted: ${summaryResult.uri}`);
 
-  // Post per-movie replies
+  // Post per-movie replies — trailer link card when available, poster fallback
   let parent = summaryResult;
   for (let i = 0; i < result.moviePosts.length; i++) {
+    const trailerUrl = result.trailerUrls[i];
     const moviePoster = result.moviePosters[i];
-    const posters = moviePoster ? [moviePoster] : [];
 
-    const replyResult = await postWithImages(
-      agent,
-      result.moviePosts[i],
-      posters,
-      parent,
-      summaryResult,
-    );
+    let replyResult: { uri: string; cid: string };
+    if (trailerUrl) {
+      replyResult = await postWithTrailer(
+        agent,
+        result.moviePosts[i],
+        trailerUrl,
+        result.movieTitles[i],
+        result.trailerNames[i],
+        moviePoster,
+        parent,
+        summaryResult,
+      );
+    } else {
+      const posters = moviePoster ? [moviePoster] : [];
+      replyResult = await postWithImages(
+        agent,
+        result.moviePosts[i],
+        posters,
+        parent,
+        summaryResult,
+      );
+    }
     parent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
-  // Update tracking state
-  for (const movieId of result.movieIds) {
-    state = track(state, String(movieId), { uri: null, cid: null });
+  // Update tracking state (skip when ignoring seen — allows repeated test runs)
+  if (!IGNORE_SEEN) {
+    for (const movieId of result.movieIds) {
+      state = track(state, String(movieId), { uri: null, cid: null });
+    }
+    saveState(STATE_FILE, state);
+    console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
+  } else {
+    console.log('IGNORE_SEEN: skipped state update.');
   }
-  saveState(STATE_FILE, state);
-  console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
 }
 
 main().catch((err) => {

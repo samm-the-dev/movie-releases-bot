@@ -46,14 +46,18 @@ export interface DigitalRelease {
   digitalDate: string | null;
   poster: PosterImage | null;
   justWatchLink: string | null;
+  trailerUrl: string | null;
 }
 
 export interface DigitalResult {
   summaryPost: string;
   moviePosts: string[];
   movieIds: number[];
+  movieTitles: string[];
+  trailerNames: string[];
   albumPosters: PosterImage[];
   moviePosters: (PosterImage | null)[];
+  trailerUrls: (string | null)[];
 }
 
 /**
@@ -169,7 +173,7 @@ export async function getDigitalReleases(
       getWatchProviderLink(movie.id),
     ]);
 
-    releases.push({ details, theatricalDate, digitalDate, poster, justWatchLink });
+    releases.push({ details, theatricalDate, digitalDate, poster, justWatchLink, trailerUrl: details.trailerUrl });
   }
 
   if (releases.length === 0) return null;
@@ -199,11 +203,18 @@ export async function getDigitalReleases(
 
   const moviePosters = dated.map((r) => r.poster);
 
+  const movieTitles = dated.map((r) => r.details.title);
+  const trailerUrls = dated.map((r) => r.trailerUrl);
+  const trailerNames = dated.map((r) => r.details.trailerName ?? 'Official Trailer');
+
   return {
     summaryPost: summaryParts[0],
     moviePosts,
     movieIds: dated.map((r) => r.details.id),
+    movieTitles,
+    trailerNames,
     albumPosters,
     moviePosters,
+    trailerUrls,
   };
 }
