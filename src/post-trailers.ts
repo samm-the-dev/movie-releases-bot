@@ -74,12 +74,16 @@ async function main(): Promise<void> {
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
-  // Update tracking state
-  for (const movieId of result.movieIds) {
-    state = track(state, `trailer-${movieId}`, { uri: null, cid: null });
+  // Update tracking state (skip when ignoring seen — allows repeated test runs)
+  if (!IGNORE_SEEN) {
+    for (const movieId of result.movieIds) {
+      state = track(state, `trailer-${movieId}`, { uri: null, cid: null });
+    }
+    saveState(STATE_FILE, state);
+    console.log(`Tracking state updated (${result.movieIds.length} trailers added).`);
+  } else {
+    console.log('IGNORE_SEEN: skipped state update.');
   }
-  saveState(STATE_FILE, state);
-  console.log(`Tracking state updated (${result.movieIds.length} trailers added).`);
 }
 
 main().catch((err) => {
