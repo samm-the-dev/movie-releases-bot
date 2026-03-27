@@ -22,7 +22,6 @@ permissions:
 
 concurrency:
   group: post-trailers
-  cancel-in-progress: true
 
 jobs:
   post:

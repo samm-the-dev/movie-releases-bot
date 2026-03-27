@@ -98,7 +98,8 @@ export async function postWithImages(
 /**
  * Post text with a YouTube trailer link card embed.
  * Uses the actual trailer name from TMDB for the link card title.
- * Falls back to image embed if thumbnail upload fails.
+ * Posts the link card without a thumbnail if upload fails.
+ * Falls back to image embed only when no YouTube URL is available.
  */
 export async function postWithTrailer(
   agent: AtpAgent,

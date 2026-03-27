@@ -257,7 +257,7 @@ const AP_MONTHS = [
   'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
 ];
 
-/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Apr. 1", "May 3"). */
+/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Jan. 10", "April 1"). */
 export function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z');
   return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
