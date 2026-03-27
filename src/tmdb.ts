@@ -292,21 +292,19 @@ export function youtubeThumbnailUrl(youtubeKey: string): string {
 }
 
 /**
- * Discover upcoming movies (next 4 weeks) to scan for new trailers.
- * Uses theatrical release type to find movies coming to theaters soon.
+ * Discover upcoming movies to scan for new trailers.
+ * No end-date cap — trailers for blockbusters often drop months before release.
+ * The trailer publish-date filter in trailers.ts handles recency.
  */
 export async function discoverUpcoming(
   region = 'US',
 ): Promise<TMDBMovie[]> {
   const now = new Date();
-  const fourWeeks = new Date(now);
-  fourWeeks.setDate(fourWeeks.getDate() + 28);
 
   const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
     region,
     with_release_type: String(ReleaseType.THEATRICAL),
     'release_date.gte': formatDate(now),
-    'release_date.lte': formatDate(fourWeeks),
     sort_by: 'popularity.desc',
   });
   return data.results;
