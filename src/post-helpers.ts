@@ -122,18 +122,17 @@ export async function postWithTrailer(
   let usedTrailer = false;
   if (ytKey) {
     const thumb = await uploadYouTubeThumbnail(agent, ytKey);
-    if (thumb) {
-      postParams.embed = {
-        $type: 'app.bsky.embed.external',
-        external: {
-          uri: trailerUrl,
-          title: `${movieTitle} — ${trailerName}`,
-          description: '',
-          thumb,
-        },
-      } as typeof postParams.embed;
-      usedTrailer = true;
-    }
+    const external: Record<string, unknown> = {
+      uri: trailerUrl,
+      title: `${movieTitle} — ${trailerName}`,
+      description: '',
+    };
+    if (thumb) external.thumb = thumb;
+    postParams.embed = {
+      $type: 'app.bsky.embed.external',
+      external,
+    } as typeof postParams.embed;
+    usedTrailer = true;
   }
 
   if (!usedTrailer && fallbackPoster) {

@@ -20,9 +20,15 @@ async function resolvePostUrl(agent: AtpAgent, url: string): Promise<string> {
   const match = url.match(/\/profile\/([^/]+)\/post\/([^/]+)/);
   if (!match) throw new Error(`Cannot parse Bluesky URL: ${url}`);
 
-  const [, handle, rkey] = match;
-  const { data } = await agent.resolveHandle({ handle });
-  return `at://${data.did}/app.bsky.feed.post/${rkey}`;
+  const [, handleOrDid, rkey] = match;
+  let did: string;
+  if (handleOrDid.startsWith('did:')) {
+    did = handleOrDid;
+  } else {
+    const { data } = await agent.resolveHandle({ handle: handleOrDid });
+    did = data.did;
+  }
+  return `at://${did}/app.bsky.feed.post/${rkey}`;
 }
 
 /** Collect all post URIs in a thread (depth-first). */

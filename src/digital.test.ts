@@ -28,13 +28,13 @@ describe('formatDigitalDetail', () => {
     expect(text).toContain('Thriller/Science Fiction');
     expect(text).toContain('1h 37m');
     expect(text).toContain('Dir. Drew Hancock');
-    expect(text).toContain('Theatrical Jan 10 \u2192 Digital Mar 25');
+    expect(text).toContain('Theatrical Jan. 10 \u2192 Digital March 25');
     expect(text).toContain('https://www.themoviedb.org/movie/42');
   });
 
   it('shows only digital date when no theatrical date', () => {
     const text = formatDigitalDetail(makeRelease({ theatricalDate: null }));
-    expect(text).toContain('Digital Mar 25');
+    expect(text).toContain('Digital March 25');
     expect(text).not.toContain('Theatrical');
     expect(text).not.toContain('\u2192');
   });

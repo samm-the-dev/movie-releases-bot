@@ -5,10 +5,11 @@
  * Posts a summary thread with YouTube link cards.
  * Runs on Wednesdays via GitHub Actions.
  */
-import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
+import type { TMDBMovieDetails } from './tmdb.js';
 import {
   discoverForTrailers,
   formatRuntime,
+  formatShortDate,
   getMovieDetails,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
@@ -44,16 +45,6 @@ export interface TrailerResult {
   movieTitles: string[];
 }
 
-// AP-style month abbreviations
-const AP_MONTHS = [
-  'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
-  'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
-];
-
-function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
-}
 
 /** Format a per-movie detail post for a new trailer. */
 export function formatTrailerDetail(entry: TrailerEntry): string {
@@ -78,7 +69,8 @@ export function formatTrailerDetail(entry: TrailerEntry): string {
 }
 
 /**
- * Discover upcoming movies with trailers published in the past 7 days.
+ * Discover popular movies with trailers published in the past 7 days.
+ * Movies may already be released; selection is based on popularity and recent trailers.
  */
 export async function getNewTrailers(
   state: TrackingState,

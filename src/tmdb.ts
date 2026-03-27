@@ -251,6 +251,18 @@ export async function getWatchProviderLink(movieId: number, region = 'US'): Prom
   return data.results[region]?.link ?? null;
 }
 
+// AP-style month abbreviations: short months get a period, long ones don't.
+const AP_MONTHS = [
+  'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
+  'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
+];
+
+/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Apr. 1", "May 3"). */
+export function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
+}
+
 /** Format a Date as YYYY-MM-DD for TMDB API params. */
 export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);

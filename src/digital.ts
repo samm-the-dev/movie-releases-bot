@@ -11,6 +11,7 @@ import {
   discoverByReleaseType,
   formatDate,
   formatRuntime,
+  formatShortDate,
   getMovieDetails,
   getReleaseDates,
   getWatchProviderLink,
@@ -102,11 +103,6 @@ async function fetchPoster(title: string, posterPath: string | null): Promise<Po
   }
 }
 
-/** Format a readable date like "Jan 10". */
-function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
 
 /** Format a per-movie detail post for a digital release. */
 export function formatDigitalDetail(release: DigitalRelease): string {
