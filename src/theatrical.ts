@@ -176,7 +176,7 @@ export async function getTheatricalReleases(
 
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m));
-  const header = `📽️ Opening This Week (${formatShortDate(gte)}–${formatShortDate(lte)})`;
+  const header = `📽️ Opening This Week (${formatShortDate(gte)} – ${formatShortDate(lte)})`;
   const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
