@@ -1,0 +1,30 @@
+name: Delete Thread
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_url:
+        description: 'Bluesky post URL (https://bsky.app/profile/.../post/...)'
+        required: true
+        type: string
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Delete thread
+        run: npx tsx src/delete-thread.ts "${{ inputs.post_url }}"
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
