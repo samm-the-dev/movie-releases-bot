@@ -17,7 +17,8 @@ import {
 
 /** Convert a bsky.app URL to an at:// URI by resolving the DID. */
 async function resolvePostUrl(agent: AtpAgent, url: string): Promise<string> {
-  const match = url.match(/\/profile\/([^/]+)\/post\/([^/]+)/);
+  const { pathname } = new URL(url);
+  const match = pathname.match(/\/profile\/([^/]+)\/post\/([^/]+)/);
   if (!match) throw new Error(`Cannot parse Bluesky URL: ${url}`);
 
   const [, handleOrDid, rkey] = match;
