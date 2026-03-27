@@ -20,6 +20,9 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 /** Max trailers to post per run. */
 const MAX_TRAILERS = 8;
 
+/** Max detail fetches per run to stay within TMDB rate limits (40 req/10s). */
+const MAX_DETAIL_FETCHES = 20;
+
 /** Minimum TMDB popularity to filter noise. */
 const MIN_POPULARITY = 15;
 
@@ -96,9 +99,12 @@ export async function getNewTrailers(
 
   // Check each candidate for a recently-published trailer
   const entries: TrailerEntry[] = [];
+  let detailFetches = 0;
   for (const movie of candidates) {
     if (entries.length >= MAX_TRAILERS) break;
+    if (detailFetches >= MAX_DETAIL_FETCHES) break;
 
+    detailFetches++;
     const details = await getMovieDetails(movie.id);
     if (!details.trailerUrl || !details.trailerPublishedAt) continue;
 
