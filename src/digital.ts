@@ -53,6 +53,8 @@ export interface DigitalResult {
   summaryPost: string;
   moviePosts: string[];
   movieIds: number[];
+  movieTitles: string[];
+  trailerNames: string[];
   albumPosters: PosterImage[];
   moviePosters: (PosterImage | null)[];
   trailerUrls: (string | null)[];
@@ -201,12 +203,16 @@ export async function getDigitalReleases(
 
   const moviePosters = dated.map((r) => r.poster);
 
+  const movieTitles = dated.map((r) => r.details.title);
   const trailerUrls = dated.map((r) => r.trailerUrl);
+  const trailerNames = dated.map((r) => r.details.trailerName ?? 'Official Trailer');
 
   return {
     summaryPost: summaryParts[0],
     moviePosts,
     movieIds: dated.map((r) => r.details.id),
+    movieTitles,
+    trailerNames,
     albumPosters,
     moviePosters,
     trailerUrls,

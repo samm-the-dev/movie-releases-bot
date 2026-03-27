@@ -4,9 +4,8 @@
  * Discovers films that recently hit digital/VOD after a theatrical run,
  * posts a summary with poster album + per-movie reply thread.
  */
-import { RichText, type AtpAgent } from '@atproto/api';
-import { getDigitalReleases, type PosterImage } from './digital.js';
-import { youtubeKeyFromUrl, youtubeThumbnailUrl } from './tmdb.js';
+import { getDigitalReleases } from './digital.js';
+import { postWithImages, postWithTrailer } from './post-helpers.js';
 import {
   createClient,
   credentialsFromEnv,
@@ -16,144 +15,6 @@ import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 const STATE_FILE = 'state/seen_digital.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
 const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
-
-/**
- * Upload poster images and return blob refs.
- */
-async function uploadImages(
-  agent: AtpAgent,
-  posters: PosterImage[],
-): Promise<Array<{ alt: string; image: unknown }>> {
-  const images = [];
-  for (const poster of posters) {
-    const response = await agent.uploadBlob(poster.data, {
-      encoding: poster.mimeType,
-    });
-    images.push({
-      alt: poster.alt,
-      image: response.data.blob,
-    });
-  }
-  return images;
-}
-
-/**
- * Fetch a YouTube thumbnail and upload it as a Bluesky blob.
- */
-async function uploadYouTubeThumbnail(
-  agent: AtpAgent,
-  youtubeKey: string,
-): Promise<unknown | null> {
-  try {
-    const url = youtubeThumbnailUrl(youtubeKey);
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const buffer = await response.arrayBuffer();
-    const blobResponse = await agent.uploadBlob(new Uint8Array(buffer), {
-      encoding: 'image/jpeg',
-    });
-    return blobResponse.data.blob;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Post text with optional image embed.
- */
-async function postWithImages(
-  agent: AtpAgent,
-  text: string,
-  posters: PosterImage[],
-  replyTo?: { uri: string; cid: string },
-  root?: { uri: string; cid: string },
-): Promise<{ uri: string; cid: string }> {
-  const rt = new RichText({ text });
-  await rt.detectFacets(agent);
-
-  const postParams: Parameters<typeof agent.post>[0] = {
-    text: rt.text,
-    facets: rt.facets,
-    createdAt: new Date().toISOString(),
-  };
-
-  if (posters.length > 0) {
-    const images = await uploadImages(agent, posters);
-    postParams.embed = {
-      $type: 'app.bsky.embed.images',
-      images: images as typeof postParams.embed extends { images: infer I } ? I : never,
-    } as typeof postParams.embed;
-  }
-
-  if (replyTo) {
-    postParams.reply = {
-      root: root ?? replyTo,
-      parent: replyTo,
-    };
-  }
-
-  const response = await agent.post(postParams);
-  return { uri: response.uri, cid: response.cid };
-}
-
-/**
- * Post text with a YouTube trailer link card embed.
- * Falls back to image embed if thumbnail upload fails.
- */
-async function postWithTrailer(
-  agent: AtpAgent,
-  text: string,
-  trailerUrl: string,
-  movieTitle: string,
-  fallbackPoster: PosterImage | null,
-  replyTo?: { uri: string; cid: string },
-  root?: { uri: string; cid: string },
-): Promise<{ uri: string; cid: string }> {
-  const rt = new RichText({ text });
-  await rt.detectFacets(agent);
-
-  const postParams: Parameters<typeof agent.post>[0] = {
-    text: rt.text,
-    facets: rt.facets,
-    createdAt: new Date().toISOString(),
-  };
-
-  const ytKey = youtubeKeyFromUrl(trailerUrl);
-  let usedTrailer = false;
-  if (ytKey) {
-    const thumb = await uploadYouTubeThumbnail(agent, ytKey);
-    if (thumb) {
-      postParams.embed = {
-        $type: 'app.bsky.embed.external',
-        external: {
-          uri: trailerUrl,
-          title: `${movieTitle} — Official Trailer`,
-          description: '',
-          thumb,
-        },
-      } as typeof postParams.embed;
-      usedTrailer = true;
-    }
-  }
-
-  if (!usedTrailer && fallbackPoster) {
-    const images = await uploadImages(agent, [fallbackPoster]);
-    postParams.embed = {
-      $type: 'app.bsky.embed.images',
-      images: images as typeof postParams.embed extends { images: infer I } ? I : never,
-    } as typeof postParams.embed;
-  }
-
-  if (replyTo) {
-    postParams.reply = {
-      root: root ?? replyTo,
-      parent: replyTo,
-    };
-  }
-
-  const response = await agent.post(postParams);
-  return { uri: response.uri, cid: response.cid };
-}
 
 async function main(): Promise<void> {
   let state = loadState(STATE_FILE);
@@ -210,12 +71,12 @@ async function main(): Promise<void> {
 
     let replyResult: { uri: string; cid: string };
     if (trailerUrl) {
-      const movieTitle = result.moviePosts[i].split('\n')[0];
       replyResult = await postWithTrailer(
         agent,
         result.moviePosts[i],
         trailerUrl,
-        movieTitle,
+        result.movieTitles[i],
+        result.trailerNames[i],
         moviePoster,
         parent,
         summaryResult,

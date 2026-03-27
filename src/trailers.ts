@@ -1,8 +1,8 @@
 /**
  * New trailer discovery and post formatting.
  *
- * Scans upcoming theatrical releases for trailers published in the
- * past 7 days. Posts a summary thread with YouTube link cards.
+ * Scans popular movies for trailers published in the past 7 days.
+ * Posts a summary thread with YouTube link cards.
  * Runs on Wednesdays via GitHub Actions.
  */
 import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
@@ -21,23 +21,12 @@ const MAX_TRAILERS = 8;
 /** Minimum TMDB popularity to filter noise. */
 const MIN_POPULARITY = 15;
 
-/** TMDB image base URL for poster fallbacks. */
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-
-/** A poster image to upload to Bluesky. */
-export interface PosterImage {
-  data: Uint8Array;
-  mimeType: string;
-  alt: string;
-}
-
 /** A movie with a recently-dropped trailer. */
 export interface TrailerEntry {
   details: TMDBMovieDetails;
   trailerUrl: string;
   trailerName: string;
   releaseDate: string;
-  poster: PosterImage | null;
 }
 
 export interface TrailerResult {
@@ -53,8 +42,6 @@ export interface TrailerResult {
   trailerNames: string[];
   /** Movie titles for link card titles. */
   movieTitles: string[];
-  /** Fallback posters per movie. */
-  moviePosters: (PosterImage | null)[];
 }
 
 // AP-style month abbreviations
@@ -68,27 +55,9 @@ function formatShortDate(dateStr: string): string {
   return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
 }
 
-/** Fetch a poster image from TMDB. */
-async function fetchPoster(title: string, posterPath: string | null): Promise<PosterImage | null> {
-  if (!posterPath) return null;
-  try {
-    const url = `${TMDB_IMAGE_BASE}${posterPath}`;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const buffer = await response.arrayBuffer();
-    return {
-      data: new Uint8Array(buffer),
-      mimeType: 'image/jpeg',
-      alt: `Movie poster for ${title}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
 /** Format a per-movie detail post for a new trailer. */
 export function formatTrailerDetail(entry: TrailerEntry): string {
-  const { details, trailerName, releaseDate } = entry;
+  const { details, releaseDate } = entry;
   const genres = details.genres
     .slice(0, 2)
     .map((g) => g.name)
@@ -137,14 +106,11 @@ export async function getNewTrailers(
     // Only include trailers published within the lookback window
     if (new Date(details.trailerPublishedAt) < cutoffDate) continue;
 
-    const poster = await fetchPoster(movie.title, movie.poster_path);
-
     entries.push({
       details,
       trailerUrl: details.trailerUrl,
       trailerName: details.trailerName ?? 'Official Trailer',
       releaseDate: movie.release_date,
-      poster,
     });
   }
 
@@ -166,6 +132,5 @@ export async function getNewTrailers(
     trailerUrls: entries.map((e) => e.trailerUrl),
     trailerNames: entries.map((e) => e.trailerName),
     movieTitles: entries.map((e) => e.details.title),
-    moviePosters: entries.map((e) => e.poster),
   };
 }

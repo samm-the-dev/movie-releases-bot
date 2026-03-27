@@ -18,7 +18,6 @@ function makeTrailerEntry(overrides: Partial<TrailerEntry> = {}): TrailerEntry {
     trailerUrl: 'https://www.youtube.com/watch?v=abc123',
     trailerName: 'Official Trailer',
     releaseDate: '2026-03-27',
-    poster: null,
     ...overrides,
   };
 }

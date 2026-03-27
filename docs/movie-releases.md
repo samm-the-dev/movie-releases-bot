@@ -93,7 +93,7 @@ Available on: Apple TV, Amazon, Vudu
 
 ## Phase 3: Trailer Posts (Implemented)
 
-A Wednesday job scans upcoming theatrical releases for recently-published official trailers via TMDB's `/movie/{id}/videos` endpoint (fetched alongside credits using `append_to_response`). Trailers are posted as YouTube link card embeds (`app.bsky.embed.external`) with thumbnails fetched from `i.ytimg.com`. Theatrical and digital detail replies also use trailer link cards when available, falling back to poster images.
+A Wednesday job scans popular movies for recently-published official trailers via TMDB's `/movie/{id}/videos` endpoint (fetched alongside credits using `append_to_response`). Trailers are posted as YouTube link card embeds (`app.bsky.embed.external`) with thumbnails fetched from `i.ytimg.com`. Theatrical and digital detail replies also use trailer link cards when available, falling back to poster images.
 
 - **Data source**: TMDB videos (YouTube keys, publish dates, official flag)
 - **Trailer selection**: Official English YouTube trailers, preferring "Trailer" over "Teaser", most recently published
