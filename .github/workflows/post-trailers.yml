@@ -20,6 +20,9 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: post-trailers
+
 jobs:
   post:
     runs-on: ubuntu-latest

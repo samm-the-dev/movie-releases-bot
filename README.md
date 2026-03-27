@@ -1,6 +1,6 @@
 # Let's All Go to the Movies 📽️
 
-A Bluesky bot that posts weekly movie release announcements — what's opening in theaters, what just hit digital, and new trailers for upcoming films.
+A Bluesky bot that posts weekly movie release announcements — what's opening in theaters, what just hit digital, and new trailers for popular films.
 
 **[@lagttm.bsky.social](https://bsky.app/profile/lagttm.bsky.social)**
 
@@ -10,7 +10,7 @@ A Bluesky bot that posts weekly movie release announcements — what's opening i
 
 **Digital releases** (Tuesdays) — films that recently hit digital/VOD after a theatrical run, with the theatrical-to-digital date window and trailer link cards.
 
-**New trailers** (Wednesdays) — recently-published official trailers for upcoming theatrical releases, posted as YouTube link card embeds.
+**New trailers** (Wednesdays) — recently-published official trailers for popular movies, posted as YouTube link card embeds.
 
 Each post includes a summary thread, followed by per-movie replies with details and embedded trailers.
 

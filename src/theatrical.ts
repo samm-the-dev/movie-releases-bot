@@ -12,6 +12,7 @@ import {
   getMovieDetails,
   getTheatricalDateRange,
   formatRuntime,
+  formatShortDate,
   ReleaseType,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
@@ -77,17 +78,6 @@ export function formatMovieDetail(details: TMDBMovieDetails, releaseDate?: strin
   return lines.join('\n');
 }
 
-// AP-style month abbreviations: short months get a period, long ones don't.
-const AP_MONTHS = [
-  'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
-  'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
-];
-
-/** Format a date string (YYYY-MM-DD) as AP-style "Mon. D" (e.g. "Apr. 1", "May 3"). */
-function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  return `${AP_MONTHS[d.getUTCMonth()] ?? ''} ${d.getUTCDate()}`;
-}
 
 /** A poster image to upload to Bluesky. */
 export interface PosterImage {
@@ -186,7 +176,7 @@ export async function getTheatricalReleases(
 
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m));
-  const header = `📽️ Opening This Week (${formatShortDate(gte)}–${formatShortDate(lte)})`;
+  const header = `📽️ Opening This Week (${formatShortDate(gte)} – ${formatShortDate(lte)})`;
   const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);

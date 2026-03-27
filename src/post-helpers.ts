@@ -5,6 +5,7 @@
  * to avoid duplicating upload and embed logic.
  */
 import { RichText, type AtpAgent } from '@atproto/api';
+import type { External } from '@atproto/api/dist/client/types/app/bsky/embed/external.js';
 import { youtubeKeyFromUrl, youtubeThumbnailUrl } from './tmdb.js';
 
 /** A poster image to upload to Bluesky. */
@@ -97,7 +98,8 @@ export async function postWithImages(
 /**
  * Post text with a YouTube trailer link card embed.
  * Uses the actual trailer name from TMDB for the link card title.
- * Falls back to image embed if thumbnail upload fails.
+ * Posts the link card without a thumbnail if upload fails.
+ * Falls back to image embed only when no YouTube URL is available.
  */
 export async function postWithTrailer(
   agent: AtpAgent,
@@ -122,18 +124,17 @@ export async function postWithTrailer(
   let usedTrailer = false;
   if (ytKey) {
     const thumb = await uploadYouTubeThumbnail(agent, ytKey);
-    if (thumb) {
-      postParams.embed = {
-        $type: 'app.bsky.embed.external',
-        external: {
-          uri: trailerUrl,
-          title: `${movieTitle} — ${trailerName}`,
-          description: '',
-          thumb,
-        },
-      } as typeof postParams.embed;
-      usedTrailer = true;
-    }
+    const external: External = {
+      uri: trailerUrl,
+      title: `${movieTitle} — ${trailerName}`,
+      description: '',
+      ...(thumb ? { thumb: thumb as External['thumb'] } : {}),
+    };
+    postParams.embed = {
+      $type: 'app.bsky.embed.external',
+      external,
+    } as typeof postParams.embed;
+    usedTrailer = true;
   }
 
   if (!usedTrailer && fallbackPoster) {
