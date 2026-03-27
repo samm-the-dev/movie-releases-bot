@@ -38,7 +38,7 @@ describe('formatTrailerDetail', () => {
     entry.details.runtime = null;
     const text = formatTrailerDetail(entry);
     expect(text).toContain('Horror/Thriller');
-    expect(text).not.toContain('h ');
+    expect(text).not.toMatch(/\d+h \d+m/);
   });
 
   it('handles no directors', () => {

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git submodule update --init --recursive 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Initializing toolbox submodule..."
+          }
+        ]
+      }
+    ]
+  }
+}
