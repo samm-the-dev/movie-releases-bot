@@ -7,7 +7,7 @@
  */
 import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
 import {
-  discoverUpcoming,
+  discoverForTrailers,
   formatRuntime,
   getMovieDetails,
 } from './tmdb.js';
@@ -119,7 +119,7 @@ export async function getNewTrailers(
   const cutoffDate = new Date(now);
   cutoffDate.setDate(cutoffDate.getDate() - 7);
 
-  const movies = await discoverUpcoming();
+  const movies = await discoverForTrailers();
 
   // Filter: not already posted as a trailer, above popularity threshold
   const candidates = movies

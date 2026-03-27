@@ -292,19 +292,18 @@ export function youtubeThumbnailUrl(youtubeKey: string): string {
 }
 
 /**
- * Discover upcoming movies to scan for new trailers.
- * No end-date cap — trailers for blockbusters often drop months before release.
- * The trailer publish-date filter in trailers.ts handles recency.
+ * Discover popular movies to scan for new trailers.
+ * No date filtering — the trailer publish-date recency check in
+ * trailers.ts controls what gets posted. This lets us catch trailers
+ * for already-released films (director's cuts, international trailers)
+ * as well as upcoming ones.
  */
-export async function discoverUpcoming(
+export async function discoverForTrailers(
   region = 'US',
 ): Promise<TMDBMovie[]> {
-  const now = new Date();
-
   const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
     region,
     with_release_type: String(ReleaseType.THEATRICAL),
-    'release_date.gte': formatDate(now),
     sort_by: 'popularity.desc',
   });
   return data.results;
