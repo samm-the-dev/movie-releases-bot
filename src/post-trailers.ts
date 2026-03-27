@@ -1,11 +1,11 @@
 /**
- * Entry point for the digital releases GHA job.
+ * Entry point for the new trailers GHA job (Wednesdays).
  *
- * Discovers films that recently hit digital/VOD after a theatrical run,
- * posts a summary with poster album + per-movie reply thread.
+ * Discovers upcoming movies with recently-published trailers
+ * and posts a summary thread with YouTube link card embeds.
  */
 import { RichText, type AtpAgent } from '@atproto/api';
-import { getDigitalReleases, type PosterImage } from './digital.js';
+import { getNewTrailers, type PosterImage } from './trailers.js';
 import { youtubeKeyFromUrl, youtubeThumbnailUrl } from './tmdb.js';
 import {
   createClient,
@@ -13,7 +13,7 @@ import {
 } from '../.toolbox/lib/bluesky/client.js';
 import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 
-const STATE_FILE = 'state/seen_digital.json';
+const STATE_FILE = 'state/seen_trailers.json';
 const DRY_RUN = process.env.DRY_RUN === '1';
 const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
 
@@ -59,46 +59,8 @@ async function uploadYouTubeThumbnail(
 }
 
 /**
- * Post text with optional image embed.
- */
-async function postWithImages(
-  agent: AtpAgent,
-  text: string,
-  posters: PosterImage[],
-  replyTo?: { uri: string; cid: string },
-  root?: { uri: string; cid: string },
-): Promise<{ uri: string; cid: string }> {
-  const rt = new RichText({ text });
-  await rt.detectFacets(agent);
-
-  const postParams: Parameters<typeof agent.post>[0] = {
-    text: rt.text,
-    facets: rt.facets,
-    createdAt: new Date().toISOString(),
-  };
-
-  if (posters.length > 0) {
-    const images = await uploadImages(agent, posters);
-    postParams.embed = {
-      $type: 'app.bsky.embed.images',
-      images: images as typeof postParams.embed extends { images: infer I } ? I : never,
-    } as typeof postParams.embed;
-  }
-
-  if (replyTo) {
-    postParams.reply = {
-      root: root ?? replyTo,
-      parent: replyTo,
-    };
-  }
-
-  const response = await agent.post(postParams);
-  return { uri: response.uri, cid: response.cid };
-}
-
-/**
  * Post text with a YouTube trailer link card embed.
- * Falls back to image embed if thumbnail upload fails.
+ * Falls back to poster image if thumbnail upload fails.
  */
 async function postWithTrailer(
   agent: AtpAgent,
@@ -158,38 +120,24 @@ async function postWithTrailer(
 async function main(): Promise<void> {
   let state = loadState(STATE_FILE);
 
-  const result = await getDigitalReleases(IGNORE_SEEN ? {} : state);
+  const result = await getNewTrailers(IGNORE_SEEN ? {} : state);
 
   if (!result) {
-    console.log('No new digital releases to post.');
+    console.log('No new trailers to post.');
     return;
   }
 
-  console.log(`Found ${result.moviePosts.length} digital releases to announce.`);
-  console.log(`Fetched ${result.albumPosters.length} album posters.`);
+  console.log(`Found ${result.moviePosts.length} new trailers to announce.`);
 
   if (DRY_RUN) {
     console.log('\n[DRY RUN] Summary post:\n---');
     console.log(result.summaryPost);
     console.log('---');
-    if (result.albumPosters.length > 0) {
-      console.log(`Album: ${result.albumPosters.length} poster(s)`);
-      for (const p of result.albumPosters) {
-        console.log(`  ${p.alt} (${(p.data.length / 1024).toFixed(0)} KB)`);
-      }
-    }
-    console.log('\n[DRY RUN] Movie detail replies:');
+    console.log('\n[DRY RUN] Trailer detail replies:');
     for (let i = 0; i < result.moviePosts.length; i++) {
       console.log(`\n--- Reply ${i + 1} ---`);
       console.log(result.moviePosts[i]);
-      const trailer = result.trailerUrls[i];
-      if (trailer) {
-        console.log(`Trailer: ${trailer}`);
-      }
-      const poster = result.moviePosters[i];
-      if (poster && !trailer) {
-        console.log(`Poster (fallback): ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
-      }
+      console.log(`Trailer: ${result.trailerUrls[i]}`);
       console.log('---');
     }
     return;
@@ -198,48 +146,40 @@ async function main(): Promise<void> {
   const credentials = credentialsFromEnv();
   const agent = await createClient(credentials);
 
-  // Post summary with poster album
-  const summaryResult = await postWithImages(agent, result.summaryPost, result.albumPosters);
-  console.log(`Summary posted: ${summaryResult.uri}`);
+  // Post summary (text-only, no album — trailers are the star here)
+  const rt = new RichText({ text: result.summaryPost });
+  await rt.detectFacets(agent);
+  const summaryResult = await agent.post({
+    text: rt.text,
+    facets: rt.facets,
+    createdAt: new Date().toISOString(),
+  });
+  const summaryRef = { uri: summaryResult.uri, cid: summaryResult.cid };
+  console.log(`Summary posted: ${summaryRef.uri}`);
 
-  // Post per-movie replies — trailer link card when available, poster fallback
-  let parent = summaryResult;
+  // Post per-movie trailer replies with YouTube link cards
+  let parent = summaryRef;
   for (let i = 0; i < result.moviePosts.length; i++) {
-    const trailerUrl = result.trailerUrls[i];
-    const moviePoster = result.moviePosters[i];
-
-    let replyResult: { uri: string; cid: string };
-    if (trailerUrl) {
-      const movieTitle = result.moviePosts[i].split('\n')[0];
-      replyResult = await postWithTrailer(
-        agent,
-        result.moviePosts[i],
-        trailerUrl,
-        movieTitle,
-        moviePoster,
-        parent,
-        summaryResult,
-      );
-    } else {
-      const posters = moviePoster ? [moviePoster] : [];
-      replyResult = await postWithImages(
-        agent,
-        result.moviePosts[i],
-        posters,
-        parent,
-        summaryResult,
-      );
-    }
+    const replyResult = await postWithTrailer(
+      agent,
+      result.moviePosts[i],
+      result.trailerUrls[i],
+      result.movieTitles[i],
+      result.moviePosters[i],
+      parent,
+      summaryRef,
+    );
     parent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
-  // Update tracking state
+  // Update tracking state — key includes "trailer-" prefix to avoid
+  // collision with theatrical/digital state files
   for (const movieId of result.movieIds) {
-    state = track(state, String(movieId), { uri: null, cid: null });
+    state = track(state, `trailer-${movieId}`, { uri: null, cid: null });
   }
   saveState(STATE_FILE, state);
-  console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
+  console.log(`Tracking state updated (${result.movieIds.length} trailers added).`);
 }
 
 main().catch((err) => {

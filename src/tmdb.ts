@@ -124,7 +124,18 @@ export async function getGenreMap(): Promise<Map<number, string>> {
   return new Map(data.genres.map((g) => [g.id, g.name]));
 }
 
-/** Detailed movie info from /movie/{id} with credits appended. */
+/** TMDB video object from /movie/{id}/videos. */
+export interface TMDBVideo {
+  key: string;
+  site: string;
+  type: string;
+  official: boolean;
+  name: string;
+  iso_639_1: string;
+  published_at: string;
+}
+
+/** Detailed movie info from /movie/{id} with credits and videos appended. */
 export interface TMDBMovieDetails {
   id: number;
   title: string;
@@ -133,6 +144,9 @@ export interface TMDBMovieDetails {
   poster_path: string | null;
   genres: TMDBGenre[];
   directors: string[];
+  trailerUrl: string | null;
+  trailerName: string | null;
+  trailerPublishedAt: string | null;
 }
 
 interface TMDBCrewMember {
@@ -150,20 +164,54 @@ interface TMDBMovieDetailsResponse {
   credits?: {
     crew?: TMDBCrewMember[];
   };
+  videos?: {
+    results?: TMDBVideo[];
+  };
+}
+
+/** Extracted trailer info from TMDB videos. */
+export interface TrailerInfo {
+  url: string;
+  name: string;
+  publishedAt: string;
 }
 
 /**
- * Get detailed movie info including runtime and director(s).
- * Uses append_to_response=credits to get crew in a single call.
+ * Pick the best official YouTube trailer from a list of TMDB videos.
+ * Prefers "Trailer" over "Teaser", then most recently published.
+ */
+export function pickTrailer(videos: TMDBVideo[]): TrailerInfo | null {
+  const trailers = videos
+    .filter((v) => v.site === 'YouTube' && v.official && v.iso_639_1 === 'en')
+    .filter((v) => v.type === 'Trailer' || v.type === 'Teaser')
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'Trailer' ? -1 : 1;
+      return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+    });
+
+  const best = trailers[0];
+  if (!best) return null;
+  return {
+    url: `https://www.youtube.com/watch?v=${best.key}`,
+    name: best.name,
+    publishedAt: best.published_at,
+  };
+}
+
+/**
+ * Get detailed movie info including runtime, director(s), and trailer.
+ * Uses append_to_response=credits,videos to get everything in a single call.
  */
 export async function getMovieDetails(movieId: number): Promise<TMDBMovieDetails> {
   const data = await tmdbFetch<TMDBMovieDetailsResponse>(`/movie/${movieId}`, {
-    append_to_response: 'credits',
+    append_to_response: 'credits,videos',
   });
 
   const directors = (data.credits?.crew ?? [])
     .filter((c) => c.job === 'Director')
     .map((c) => c.name);
+
+  const trailer = pickTrailer(data.videos?.results ?? []);
 
   return {
     id: data.id,
@@ -173,6 +221,9 @@ export async function getMovieDetails(movieId: number): Promise<TMDBMovieDetails
     poster_path: data.poster_path,
     genres: data.genres,
     directors,
+    trailerUrl: trailer?.url ?? null,
+    trailerName: trailer?.name ?? null,
+    trailerPublishedAt: trailer?.publishedAt ?? null,
   };
 }
 
@@ -224,4 +275,39 @@ export function getTheatricalDateRange(referenceDate: Date = new Date()): { gte:
     gte: formatDate(thursday),
     lte: formatDate(nextWednesday),
   };
+}
+
+/** Extract the YouTube video key from a YouTube watch URL. */
+export function youtubeKeyFromUrl(url: string): string | null {
+  const match = url.match(/[?&]v=([^&]+)/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Get the thumbnail URL for a YouTube video.
+ * Uses hqdefault which is always available (480x360).
+ */
+export function youtubeThumbnailUrl(youtubeKey: string): string {
+  return `https://i.ytimg.com/vi/${youtubeKey}/hqdefault.jpg`;
+}
+
+/**
+ * Discover upcoming movies (next 4 weeks) to scan for new trailers.
+ * Uses theatrical release type to find movies coming to theaters soon.
+ */
+export async function discoverUpcoming(
+  region = 'US',
+): Promise<TMDBMovie[]> {
+  const now = new Date();
+  const fourWeeks = new Date(now);
+  fourWeeks.setDate(fourWeeks.getDate() + 28);
+
+  const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
+    region,
+    with_release_type: String(ReleaseType.THEATRICAL),
+    'release_date.gte': formatDate(now),
+    'release_date.lte': formatDate(fourWeeks),
+    sort_by: 'popularity.desc',
+  });
+  return data.results;
 }

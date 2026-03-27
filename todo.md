@@ -15,15 +15,27 @@
 
 ## Phase 2: Digital Release Tracking
 
-- [ ] Watchlist system (track films from theatrical debut, check for type 4 digital release)
-- [ ] Digital release discovery + per-film post format
-- [ ] GHA workflow (Tuesday cron)
+- [x] Digital release discovery + per-film post format
+- [x] GHA workflow (Tuesday cron)
 - [ ] Watchlist pruning (180-day timeout)
 
 ## Phase 2+: Polish
 
-- [ ] Watch provider data (where to stream/rent/buy)
-- [ ] Movie poster image embeds
-- [ ] Popularity threshold tuning
+- [x] Watch provider data (JustWatch links)
+- [x] Movie poster image embeds
+- [x] Popularity threshold tuning
 - [ ] Ko-fi link in bot bio
 - [ ] TMDB attribution in bot bio
+
+## Phase 3: Trailer Support
+
+- [x] TMDB video/trailer extraction via `/movie/{id}/videos` (append_to_response)
+- [x] `pickTrailer()` — selects best official YouTube trailer (prefers Trailer > Teaser, most recent)
+- [x] YouTube link card embeds (`app.bsky.embed.external`) with thumbnail for detail replies
+- [x] Poster fallback when no trailer is available
+- [x] Trailer link cards in theatrical release detail posts
+- [x] Trailer link cards in digital release detail posts
+- [x] New trailer discovery job — upcoming movies with trailers published in the past 7 days
+- [x] GHA workflow (Wednesday cron, dry-run via workflow_dispatch)
+- [x] Trailer state tracking (`state/seen_trailers.json`)
+- [x] Tests for `pickTrailer`, `youtubeKeyFromUrl`, `youtubeThumbnailUrl`, `formatTrailerDetail`

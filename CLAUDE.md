@@ -1,6 +1,6 @@
 # Movie Releases Bot
 
-Bluesky bot for theatrical + digital movie release announcements, powered by TMDB API and GitHub Actions.
+Bluesky bot for theatrical + digital movie release announcements + new trailer posts, powered by TMDB API and GitHub Actions.
 
 ## Key References
 
