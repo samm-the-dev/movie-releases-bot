@@ -304,19 +304,33 @@ export function youtubeThumbnailUrl(youtubeKey: string): string {
 }
 
 /**
- * Discover popular movies to scan for new trailers.
- * No date filtering — the trailer publish-date recency check in
- * trailers.ts controls what gets posted. This lets us catch trailers
- * for already-released films (director's cuts, international trailers)
- * as well as upcoming ones.
+ * Discover upcoming movies to scan for new trailers.
+ * Targets movies releasing in the next 3 months (active marketing window)
+ * across multiple pages to cast a wider net. The trailer publish-date
+ * recency check in trailers.ts controls what actually gets posted.
  */
 export async function discoverForTrailers(
   region = 'US',
+  referenceDate: Date = new Date(),
+  pages = 3,
 ): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
-    region,
-    with_release_type: String(ReleaseType.THEATRICAL),
-    sort_by: 'popularity.desc',
-  });
-  return data.results;
+  const gte = formatDate(referenceDate);
+  const end = new Date(referenceDate);
+  end.setMonth(end.getMonth() + 3);
+  const lte = formatDate(end);
+
+  const results: TMDBMovie[] = [];
+  for (let page = 1; page <= pages; page++) {
+    const data = await tmdbFetch<TMDBDiscoverResponse>('/discover/movie', {
+      region,
+      with_release_type: String(ReleaseType.THEATRICAL),
+      'primary_release_date.gte': gte,
+      'primary_release_date.lte': lte,
+      sort_by: 'popularity.desc',
+      page: String(page),
+    });
+    results.push(...data.results);
+    if (page >= data.total_pages) break;
+  }
+  return results;
 }
