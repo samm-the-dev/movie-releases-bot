@@ -11,6 +11,7 @@ import {
   formatRuntime,
   formatShortDate,
   getMovieDetails,
+  getTheatricalDateRange,
 } from './tmdb.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
@@ -18,6 +19,9 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 
 /** Max trailers to post per run. */
 const MAX_TRAILERS = 8;
+
+/** Max detail fetches per run to stay within TMDB rate limits (40 req/10s). */
+const MAX_DETAIL_FETCHES = 20;
 
 /** Minimum TMDB popularity to filter noise. */
 const MIN_POPULARITY = 15;
@@ -80,18 +84,27 @@ export async function getNewTrailers(
   const cutoffDate = new Date(now);
   cutoffDate.setDate(cutoffDate.getDate() - 7);
 
-  const movies = await discoverForTrailers();
+  const movies = await discoverForTrailers('US', now);
 
-  // Filter: not already posted as a trailer, above popularity threshold
+  // Skip movies opening in tomorrow's theatrical window to avoid overlap
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const theatrical = getTheatricalDateRange(tomorrow);
+
+  // Filter: not already posted, above popularity threshold, not in next theatrical window
   const candidates = movies
     .filter((m) => !isTracked(state, `trailer-${m.id}`))
-    .filter((m) => m.popularity >= MIN_POPULARITY);
+    .filter((m) => m.popularity >= MIN_POPULARITY)
+    .filter((m) => m.release_date < theatrical.gte || m.release_date > theatrical.lte);
 
   // Check each candidate for a recently-published trailer
   const entries: TrailerEntry[] = [];
+  let detailFetches = 0;
   for (const movie of candidates) {
     if (entries.length >= MAX_TRAILERS) break;
+    if (detailFetches >= MAX_DETAIL_FETCHES) break;
 
+    detailFetches++;
     const details = await getMovieDetails(movie.id);
     if (!details.trailerUrl || !details.trailerPublishedAt) continue;
 
