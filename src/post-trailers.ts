@@ -58,6 +58,7 @@ async function main(): Promise<void> {
   console.log(`Summary posted: ${summaryRef.uri}`);
 
   // Post per-movie trailer replies with YouTube link cards
+  const replyRefs: Array<{ uri: string; cid: string }> = [];
   let parent = summaryRef;
   for (let i = 0; i < result.moviePosts.length; i++) {
     const replyResult = await postWithTrailer(
@@ -70,14 +71,16 @@ async function main(): Promise<void> {
       parent,
       summaryRef,
     );
+    replyRefs.push(replyResult);
     parent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
   // Update tracking state (skip when ignoring seen — allows repeated test runs)
   if (!IGNORE_SEEN) {
-    for (const movieId of result.movieIds) {
-      state = track(state, `trailer-${movieId}`, { uri: null, cid: null });
+    for (let i = 0; i < result.movieIds.length; i++) {
+      const ref = replyRefs[i] ?? { uri: null, cid: null };
+      state = track(state, `trailer-${result.movieIds[i]}`, ref);
     }
     saveState(STATE_FILE, state);
     console.log(`Tracking state updated (${result.movieIds.length} trailers added).`);
