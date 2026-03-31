@@ -34,20 +34,9 @@ export interface TrailerEntry {
   releaseDate: string;
 }
 
-export interface TrailerResult {
-  /** Summary post text. */
-  summaryPost: string;
-  /** Per-movie detail post texts. */
-  moviePosts: string[];
-  /** TMDB IDs of movies included. */
-  movieIds: number[];
-  /** YouTube trailer URLs per movie. */
-  trailerUrls: string[];
-  /** Trailer names (e.g. "Official Trailer", "Final Trailer"). */
-  trailerNames: string[];
-  /** Movie titles for link card titles. */
-  movieTitles: string[];
-}
+import type { ThreadResult } from './post-helpers.js';
+
+export type TrailerResult = ThreadResult;
 
 
 /** Format a per-movie detail post for a new trailer. */
@@ -139,5 +128,7 @@ export async function getNewTrailers(
     trailerUrls: entries.map((e) => e.trailerUrl),
     trailerNames: entries.map((e) => e.trailerName),
     movieTitles: entries.map((e) => e.details.title),
+    albumPosters: [],
+    moviePosters: entries.map(() => null),
   };
 }

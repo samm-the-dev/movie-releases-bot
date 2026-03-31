@@ -5,116 +5,13 @@
  * posts a summary with poster album + per-movie reply thread.
  */
 import { getDigitalReleases } from './digital.js';
-import { postWithImages, postWithTrailer } from './post-helpers.js';
-import {
-  createClient,
-  credentialsFromEnv,
-} from '../.toolbox/lib/bluesky/client.js';
-import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
+import { runJob } from './post-helpers.js';
 
-const STATE_FILE = 'state/seen_digital.json';
-const DRY_RUN = process.env.DRY_RUN === '1';
-const IGNORE_SEEN = process.env.IGNORE_SEEN === '1';
-
-async function main(): Promise<void> {
-  let state = loadState(STATE_FILE);
-
-  const result = await getDigitalReleases(IGNORE_SEEN ? {} : state);
-
-  if (!result) {
-    console.log('No new digital releases to post.');
-    return;
-  }
-
-  console.log(`Found ${result.moviePosts.length} digital releases to announce.`);
-  console.log(`Fetched ${result.albumPosters.length} album posters.`);
-
-  if (DRY_RUN) {
-    console.log('\n[DRY RUN] Summary post:\n---');
-    console.log(result.summaryPost);
-    console.log('---');
-    if (result.albumPosters.length > 0) {
-      console.log(`Album: ${result.albumPosters.length} poster(s)`);
-      for (const p of result.albumPosters) {
-        console.log(`  ${p.alt} (${(p.data.length / 1024).toFixed(0)} KB)`);
-      }
-    }
-    console.log('\n[DRY RUN] Movie detail replies:');
-    for (let i = 0; i < result.moviePosts.length; i++) {
-      console.log(`\n--- Reply ${i + 1} ---`);
-      console.log(result.moviePosts[i]);
-      const trailer = result.trailerUrls[i];
-      if (trailer) {
-        console.log(`Trailer: ${trailer}`);
-      }
-      const poster = result.moviePosters[i];
-      if (poster && !trailer) {
-        console.log(`Poster (fallback): ${poster.alt} (${(poster.data.length / 1024).toFixed(0)} KB)`);
-      }
-      console.log('---');
-    }
-    return;
-  }
-
-  const credentials = credentialsFromEnv();
-  const agent = await createClient(credentials);
-
-  // Post summary with poster album
-  const summaryResult = await postWithImages(agent, result.summaryPost, result.albumPosters);
-  console.log(`Summary posted: ${summaryResult.uri}`);
-
-  // Post per-movie replies — trailer link card when available, poster fallback
-  const replyRefs: Array<{ uri: string; cid: string }> = [];
-  let parent = summaryResult;
-  for (let i = 0; i < result.moviePosts.length; i++) {
-    const trailerUrl = result.trailerUrls[i];
-    const moviePoster = result.moviePosters[i];
-
-    let replyResult: { uri: string; cid: string };
-    if (trailerUrl) {
-      replyResult = await postWithTrailer(
-        agent,
-        result.moviePosts[i],
-        trailerUrl,
-        result.movieTitles[i],
-        result.trailerNames[i],
-        moviePoster,
-        parent,
-        summaryResult,
-      );
-    } else {
-      const posters = moviePoster ? [moviePoster] : [];
-      replyResult = await postWithImages(
-        agent,
-        result.moviePosts[i],
-        posters,
-        parent,
-        summaryResult,
-      );
-    }
-    replyRefs.push(replyResult);
-    parent = replyResult;
-    console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
-  }
-
-  // Update tracking state (skip when ignoring seen — allows repeated test runs)
-  if (!IGNORE_SEEN) {
-    if (replyRefs.length !== result.movieIds.length) {
-      throw new Error(
-        `Invariant violation: replyRefs length (${replyRefs.length}) does not match movieIds length (${result.movieIds.length}).`,
-      );
-    }
-    for (let i = 0; i < result.movieIds.length; i++) {
-      state = track(state, String(result.movieIds[i]), replyRefs[i]);
-    }
-    saveState(STATE_FILE, state);
-    console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
-  } else {
-    console.log('IGNORE_SEEN: skipped state update.');
-  }
-}
-
-main().catch((err) => {
+runJob({
+  stateFile: 'state/seen_digital.json',
+  label: 'digital releases',
+  discover: (state) => getDigitalReleases(state),
+}).catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });
