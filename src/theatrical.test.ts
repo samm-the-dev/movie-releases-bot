@@ -2,14 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { formatMovieLine, formatMovieDetail } from './theatrical.js';
 import type { TMDBMovie, TMDBMovieDetails } from './tmdb.js';
 
-const genreMap = new Map([
-  [28, 'Action'],
-  [27, 'Horror'],
-  [53, 'Thriller'],
-  [35, 'Comedy'],
-  [18, 'Drama'],
-]);
-
 function makeMovie(overrides: Partial<TMDBMovie> = {}): TMDBMovie {
   return {
     id: 1,
@@ -32,6 +24,9 @@ function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetail
     poster_path: '/test.jpg',
     genres: [{ id: 28, name: 'Action' }, { id: 53, name: 'Thriller' }],
     directors: ['Test Director'],
+    trailerUrl: null,
+    trailerName: null,
+    trailerPublishedAt: null,
     ...overrides,
   };
 }

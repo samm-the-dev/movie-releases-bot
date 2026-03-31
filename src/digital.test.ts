@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { formatDigitalDetail, type DigitalRelease } from './digital.js';
-import type { TMDBMovieDetails } from './tmdb.js';
 
 function makeRelease(overrides: Partial<DigitalRelease> = {}): DigitalRelease {
   return {
@@ -12,11 +11,15 @@ function makeRelease(overrides: Partial<DigitalRelease> = {}): DigitalRelease {
       poster_path: '/companion.jpg',
       genres: [{ id: 53, name: 'Thriller' }, { id: 878, name: 'Science Fiction' }],
       directors: ['Drew Hancock'],
+      trailerUrl: null,
+      trailerName: null,
+      trailerPublishedAt: null,
     },
     theatricalDate: '2026-01-10',
     digitalDate: '2026-03-25',
     poster: null,
     justWatchLink: null,
+    trailerUrl: null,
     ...overrides,
   };
 }
