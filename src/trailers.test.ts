@@ -8,6 +8,7 @@ function makeTrailerEntry(overrides: Partial<TrailerEntry> = {}): TrailerEntry {
       title: 'Sinners',
       overview: 'A vampire thriller.',
       runtime: 137,
+      popularity: 80,
       poster_path: '/sinners.jpg',
       genres: [{ id: 27, name: 'Horror' }, { id: 53, name: 'Thriller' }],
       directors: ['Ryan Coogler'],

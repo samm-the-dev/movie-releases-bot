@@ -141,6 +141,7 @@ export interface TMDBMovieDetails {
   title: string;
   overview: string;
   runtime: number | null;
+  popularity: number;
   poster_path: string | null;
   genres: TMDBGenre[];
   directors: string[];
@@ -159,6 +160,7 @@ interface TMDBMovieDetailsResponse {
   title: string;
   overview: string;
   runtime: number | null;
+  popularity: number;
   poster_path: string | null;
   genres: TMDBGenre[];
   credits?: {
@@ -218,6 +220,7 @@ export async function getMovieDetails(movieId: number): Promise<TMDBMovieDetails
     title: data.title,
     overview: data.overview,
     runtime: data.runtime,
+    popularity: data.popularity,
     poster_path: data.poster_path,
     genres: data.genres,
     directors,
