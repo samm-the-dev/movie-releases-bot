@@ -3,3 +3,4 @@ dist/
 *.tsbuildinfo
 _bmad/
 _bmad-output/
+.env

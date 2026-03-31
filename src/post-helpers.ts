@@ -12,6 +12,7 @@ import {
   credentialsFromEnv,
 } from '../.toolbox/lib/bluesky/client.js';
 import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
+import { notifyDiscord } from './discord.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 
 /** A poster image to upload to Bluesky. */
@@ -162,6 +163,13 @@ export async function postWithTrailer(
   return { uri: response.uri, cid: response.cid };
 }
 
+/** A labeled group of movies (e.g. by streaming service). */
+export interface MovieGroup {
+  label: string;
+  /** Indices into the movieIds/movieTitles arrays. */
+  indices: number[];
+}
+
 /** Common shape returned by all discovery functions. */
 export interface ThreadResult {
   /** Summary post(s) — multiple when the bullet list overflows 300 chars. */
@@ -173,6 +181,10 @@ export interface ThreadResult {
   trailerNames: string[];
   albumPosters: PosterImage[];
   moviePosters: (PosterImage | null)[];
+  /** Per-movie external links (e.g. streaming deep links). Falls back to TMDB. */
+  movieLinks?: (string | null)[];
+  /** Optional grouping (e.g. by streaming service). Omit for flat lists. */
+  groups?: MovieGroup[];
 }
 
 /** Options for {@link runJob}. */
@@ -304,6 +316,21 @@ export async function runJob(options: JobOptions): Promise<void> {
   const credentials = credentialsFromEnv();
   const agent = await createClient(credentials);
   const replyRefs = await postThread(agent, result);
+
+  // Send Discord notification (best-effort, don't block state update)
+  const discordUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (discordUrl) {
+    const handle = process.env.BLUESKY_HANDLE ?? '';
+    const rkey = replyRefs[0]?.uri.split('/').pop() ?? '';
+    const threadUrl = handle && rkey
+      ? `https://bsky.app/profile/${handle}/post/${rkey}`
+      : undefined;
+    try {
+      await notifyDiscord(discordUrl, result, options.label, threadUrl);
+    } catch (error) {
+      console.error('Discord notification failed:', error);
+    }
+  }
 
   // Update tracking state
   if (!IGNORE_SEEN) {
