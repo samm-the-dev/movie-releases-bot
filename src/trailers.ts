@@ -13,6 +13,7 @@ import {
   getMovieDetails,
   getTheatricalDateRange,
 } from './tmdb.js';
+import type { ThreadResult } from './post-helpers.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
@@ -34,7 +35,6 @@ export interface TrailerEntry {
   releaseDate: string;
 }
 
-import type { ThreadResult } from './post-helpers.js';
 
 export type TrailerResult = ThreadResult;
 
