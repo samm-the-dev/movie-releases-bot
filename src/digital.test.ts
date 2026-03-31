@@ -8,6 +8,7 @@ function makeRelease(overrides: Partial<DigitalRelease> = {}): DigitalRelease {
       title: 'Companion',
       overview: 'An AI thriller.',
       runtime: 97,
+      popularity: 50,
       poster_path: '/companion.jpg',
       genres: [{ id: 53, name: 'Thriller' }, { id: 878, name: 'Science Fiction' }],
       directors: ['Drew Hancock'],
