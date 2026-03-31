@@ -164,7 +164,8 @@ export async function postWithTrailer(
 
 /** Common shape returned by all discovery functions. */
 export interface ThreadResult {
-  summaryPost: string;
+  /** Summary post(s) — multiple when the bullet list overflows 300 chars. */
+  summaryPosts: string[];
   moviePosts: string[];
   movieIds: number[];
   movieTitles: string[];
@@ -194,25 +195,26 @@ export async function postThread(
   agent: AtpAgent,
   result: ThreadResult,
 ): Promise<Array<{ uri: string; cid: string }>> {
-  // Post summary — with poster album if available, text-only otherwise
-  let summaryRef: { uri: string; cid: string };
-  if (result.albumPosters.length > 0) {
-    summaryRef = await postWithImages(agent, result.summaryPost, result.albumPosters);
-  } else {
-    const rt = new RichText({ text: result.summaryPost });
-    await rt.detectFacets(agent);
-    const res = await agent.post({
-      text: rt.text,
-      facets: rt.facets,
-      createdAt: new Date().toISOString(),
-    });
-    summaryRef = { uri: res.uri, cid: res.cid };
+  // Post summary post(s) — first gets the album, overflow parts are text-only
+  let rootRef: { uri: string; cid: string } | undefined;
+  let parent: { uri: string; cid: string } | undefined;
+  for (let s = 0; s < result.summaryPosts.length; s++) {
+    const text = result.summaryPosts[s];
+    let ref: { uri: string; cid: string };
+    if (s === 0 && result.albumPosters.length > 0) {
+      ref = await postWithImages(agent, text, result.albumPosters, parent, rootRef);
+    } else {
+      ref = await postWithImages(agent, text, [], parent, rootRef);
+    }
+    if (!rootRef) rootRef = ref;
+    parent = ref;
+    console.log(`Summary ${s + 1}/${result.summaryPosts.length}: ${ref.uri}`);
   }
-  console.log(`Summary posted: ${summaryRef.uri}`);
+  const summaryRef = rootRef!;
 
   // Post per-movie replies
   const replyRefs: Array<{ uri: string; cid: string }> = [];
-  let parent = summaryRef;
+  let replyParent = parent ?? summaryRef;
   for (let i = 0; i < result.moviePosts.length; i++) {
     const trailerUrl = result.trailerUrls[i];
     const moviePoster = result.moviePosters[i];
@@ -226,7 +228,7 @@ export async function postThread(
         result.movieTitles[i],
         result.trailerNames[i],
         moviePoster,
-        parent,
+        replyParent,
         summaryRef,
       );
     } else {
@@ -235,12 +237,12 @@ export async function postThread(
         agent,
         result.moviePosts[i],
         posters,
-        parent,
+        replyParent,
         summaryRef,
       );
     }
     replyRefs.push(replyResult);
-    parent = replyResult;
+    replyParent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
@@ -269,9 +271,12 @@ export async function runJob(options: JobOptions): Promise<void> {
   }
 
   if (DRY_RUN) {
-    console.log('\n[DRY RUN] Summary post:\n---');
-    console.log(result.summaryPost);
-    console.log('---');
+    for (let s = 0; s < result.summaryPosts.length; s++) {
+      const label = result.summaryPosts.length > 1 ? ` (${s + 1}/${result.summaryPosts.length})` : '';
+      console.log(`\n[DRY RUN] Summary post${label}:\n---`);
+      console.log(result.summaryPosts[s]);
+      console.log('---');
+    }
     if (result.albumPosters.length > 0) {
       console.log(`Album: ${result.albumPosters.length} poster(s)`);
       for (const p of result.albumPosters) {

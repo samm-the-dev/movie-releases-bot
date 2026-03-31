@@ -122,7 +122,7 @@ export async function getNewTrailers(
   const moviePosts = entries.map((e) => formatTrailerDetail(e));
 
   return {
-    summaryPost: summaryParts[0],
+    summaryPosts: summaryParts,
     moviePosts,
     movieIds: entries.map((e) => e.details.id),
     trailerUrls: entries.map((e) => e.trailerUrl),
