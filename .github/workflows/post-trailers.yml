@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
           submodules: true
 
       - uses: actions/setup-node@v4
@@ -47,10 +48,12 @@ jobs:
           DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
           IGNORE_SEEN: ${{ (github.event_name == 'workflow_dispatch' && inputs.ignore_seen) && '1' || '0' }}
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Commit seen state
         if: env.DRY_RUN != '1'
-        with:
-          commit_message: 'update trailer seen IDs [skip ci]'
-          file_pattern: 'state/*.json'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/*.json
+          git diff --staged --quiet || (git commit -m "update trailer seen IDs [skip ci]" && git push)
         env:
           DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
