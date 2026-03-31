@@ -51,7 +51,7 @@ export interface DigitalRelease {
 }
 
 export interface DigitalResult {
-  summaryPost: string;
+  summaryPosts: string[];
   moviePosts: string[];
   movieIds: number[];
   movieTitles: string[];
@@ -204,7 +204,7 @@ export async function getDigitalReleases(
   const trailerNames = dated.map((r) => r.details.trailerName ?? 'Official Trailer');
 
   return {
-    summaryPost: summaryParts[0],
+    summaryPosts: summaryParts,
     moviePosts,
     movieIds: dated.map((r) => r.details.id),
     movieTitles,

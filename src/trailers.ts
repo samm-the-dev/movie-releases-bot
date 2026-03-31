@@ -13,6 +13,7 @@ import {
   getMovieDetails,
   getTheatricalDateRange,
 } from './tmdb.js';
+import type { ThreadResult } from './post-helpers.js';
 import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
@@ -34,20 +35,8 @@ export interface TrailerEntry {
   releaseDate: string;
 }
 
-export interface TrailerResult {
-  /** Summary post text. */
-  summaryPost: string;
-  /** Per-movie detail post texts. */
-  moviePosts: string[];
-  /** TMDB IDs of movies included. */
-  movieIds: number[];
-  /** YouTube trailer URLs per movie. */
-  trailerUrls: string[];
-  /** Trailer names (e.g. "Official Trailer", "Final Trailer"). */
-  trailerNames: string[];
-  /** Movie titles for link card titles. */
-  movieTitles: string[];
-}
+
+export type TrailerResult = ThreadResult;
 
 
 /** Format a per-movie detail post for a new trailer. */
@@ -133,11 +122,13 @@ export async function getNewTrailers(
   const moviePosts = entries.map((e) => formatTrailerDetail(e));
 
   return {
-    summaryPost: summaryParts[0],
+    summaryPosts: summaryParts,
     moviePosts,
     movieIds: entries.map((e) => e.details.id),
     trailerUrls: entries.map((e) => e.trailerUrl),
     trailerNames: entries.map((e) => e.trailerName),
     movieTitles: entries.map((e) => e.details.title),
+    albumPosters: [],
+    moviePosters: entries.map(() => null),
   };
 }

@@ -97,8 +97,8 @@ export interface EnrichedMovie {
 }
 
 export interface TheatricalResult {
-  /** Summary post text (with bullet list). */
-  summaryPost: string;
+  /** Summary post(s) — multiple when the bullet list overflows 300 chars. */
+  summaryPosts: string[];
   /** Per-movie detail post texts. */
   moviePosts: string[];
   /** TMDB IDs of movies included in the posts. */
@@ -180,7 +180,7 @@ export async function getTheatricalReleases(
   const footer = `#NowPlaying #Movies #Filmsky`;
 
   const summaryParts = formatBulletList(header, lines, footer);
-  const summaryPost = summaryParts[0]; // Use first chunk; overflow rare with title-only lines
+  const summaryPosts = summaryParts;
 
   // Per-movie detail posts
   const moviePosts = enriched.map((e) => formatMovieDetail(e.details, e.movie.release_date));
@@ -200,7 +200,7 @@ export async function getTheatricalReleases(
   const trailerNames = enriched.map((e) => e.details.trailerName ?? 'Official Trailer');
 
   return {
-    summaryPost,
+    summaryPosts,
     moviePosts,
     movieIds: newMovies.map((m) => m.id),
     movieTitles,
