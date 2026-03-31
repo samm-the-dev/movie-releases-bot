@@ -99,9 +99,13 @@ async function main(): Promise<void> {
 
   // Update tracking state (skip when ignoring seen — allows repeated test runs)
   if (!IGNORE_SEEN) {
+    if (replyRefs.length !== result.movieIds.length) {
+      throw new Error(
+        `Invariant violation: replyRefs length (${replyRefs.length}) does not match movieIds length (${result.movieIds.length}).`,
+      );
+    }
     for (let i = 0; i < result.movieIds.length; i++) {
-      const ref = replyRefs[i] ?? { uri: null, cid: null };
-      state = track(state, String(result.movieIds[i]), ref);
+      state = track(state, String(result.movieIds[i]), replyRefs[i]);
     }
     saveState(STATE_FILE, state);
     console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
