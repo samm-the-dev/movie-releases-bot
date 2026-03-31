@@ -181,6 +181,10 @@ export async function getNewStreamingMovies(
       if (seen.has(key)) continue;
       seen.add(key);
 
+      // Only include titles available with a base subscription or for free —
+      // skip add-ons (Shudder via Prime, etc.), rentals, and purchases.
+      if (change.streamingOptionType !== 'subscription' && change.streamingOptionType !== 'free') continue;
+
       const show = data.shows[change.showId];
       if (!show || show.showType !== 'movie') continue;
 
