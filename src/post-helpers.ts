@@ -196,6 +196,9 @@ export async function postThread(
   result: ThreadResult,
 ): Promise<Array<{ uri: string; cid: string }>> {
   // Post summary post(s) — first gets the album, overflow parts are text-only
+  if (result.summaryPosts.length === 0) {
+    throw new Error('summaryPosts must not be empty.');
+  }
   let rootRef: { uri: string; cid: string } | undefined;
   let parent: { uri: string; cid: string } | undefined;
   for (let s = 0; s < result.summaryPosts.length; s++) {
