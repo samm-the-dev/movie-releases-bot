@@ -6,7 +6,7 @@
  * TMDB posters/trailers, and formats a Bluesky thread grouped
  * by service.
  */
-import { getMovieDetails, formatRuntime, formatDate } from './tmdb.js';
+import { getMovieDetails, formatRuntime, formatDate, formatShortDate } from './tmdb.js';
 import { splitForThread } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
@@ -80,28 +80,27 @@ function groupByService(
   movies: EnrichedStreamingMovie[],
 ): Map<string, EnrichedStreamingMovie[]> {
   const groups = new Map<string, EnrichedStreamingMovie[]>();
-  for (const svc of ALL_SERVICES) {
+  const serviceOrder = new Map<string, number>();
+  ALL_SERVICES.forEach((svc, index) => {
     const name = ServiceDisplayName[svc];
+    serviceOrder.set(name, index);
     const matches = movies.filter((m) => m.change.serviceName === name);
     if (matches.length > 0) groups.set(name, matches);
-  }
-  const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  });
+  // Most movies first; ties break by canonical service order
+  const sorted = [...groups.entries()].sort((a, b) => {
+    const countDiff = b[1].length - a[1].length;
+    if (countDiff !== 0) return countDiff;
+    return (serviceOrder.get(a[0]) ?? 0) - (serviceOrder.get(b[0]) ?? 0);
+  });
   return new Map(sorted);
 }
 
-/** Format the summary date for the header. */
+/** Format the summary date range for the header. */
 function formatWeekDate(referenceDate: Date = new Date()): string {
   const d = new Date(referenceDate);
   d.setDate(d.getDate() - 7);
-  const fromStr = formatDate(d);
-  const toStr = formatDate(referenceDate);
-  const from = new Date(fromStr + 'T12:00:00Z');
-  const to = new Date(toStr + 'T12:00:00Z');
-  const AP_MONTHS = [
-    'Jan.', 'Feb.', 'March', 'April', 'May', 'June',
-    'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.',
-  ];
-  return `${AP_MONTHS[from.getUTCMonth()]} ${from.getUTCDate()} – ${AP_MONTHS[to.getUTCMonth()]} ${to.getUTCDate()}`;
+  return `${formatShortDate(formatDate(d))} – ${formatShortDate(formatDate(referenceDate))}`;
 }
 
 /**
@@ -162,8 +161,8 @@ export async function getStreamingReleases(
             };
           }
         }
-      } catch {
-        // TMDB enrichment is best-effort
+      } catch (error) {
+        console.error('TMDB enrichment failed for streaming movie', { title: change.title, tmdbId: change.tmdbId }, error);
       }
       return { change, poster, trailerUrl, trailerName };
     }),
