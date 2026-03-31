@@ -64,6 +64,7 @@ async function main(): Promise<void> {
   console.log(`Summary posted: ${summaryResult.uri}`);
 
   // Post per-movie replies — trailer link card when available, poster fallback
+  const replyRefs: Array<{ uri: string; cid: string }> = [];
   let parent = summaryResult;
   for (let i = 0; i < result.moviePosts.length; i++) {
     const trailerUrl = result.trailerUrls[i];
@@ -91,14 +92,20 @@ async function main(): Promise<void> {
         summaryResult,
       );
     }
+    replyRefs.push(replyResult);
     parent = replyResult;
     console.log(`  Reply ${i + 1}: ${replyResult.uri}`);
   }
 
   // Update tracking state (skip when ignoring seen — allows repeated test runs)
   if (!IGNORE_SEEN) {
-    for (const movieId of result.movieIds) {
-      state = track(state, String(movieId), { uri: null, cid: null });
+    if (replyRefs.length !== result.movieIds.length) {
+      throw new Error(
+        `Invariant violation: replyRefs length (${replyRefs.length}) does not match movieIds length (${result.movieIds.length}).`,
+      );
+    }
+    for (let i = 0; i < result.movieIds.length; i++) {
+      state = track(state, String(result.movieIds[i]), replyRefs[i]);
     }
     saveState(STATE_FILE, state);
     console.log(`Tracking state updated (${result.movieIds.length} movies added).`);
