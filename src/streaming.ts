@@ -168,10 +168,8 @@ export async function getStreamingReleases(
     }),
   );
 
-  // Filter by API rating to remove catalog noise, then cap
-  const enriched: EnrichedStreamingMovie[] = enrichedAll
-    .filter((m) => (m.change.rating ?? 0) >= MIN_RATING)
-    .slice(0, MAX_MOVIES_DISPLAY);
+  // Cap to display limit (rating already filtered at candidate stage)
+  const enriched: EnrichedStreamingMovie[] = enrichedAll.slice(0, MAX_MOVIES_DISPLAY);
 
   // Group by service for the summary
   const grouped = groupByService(enriched);

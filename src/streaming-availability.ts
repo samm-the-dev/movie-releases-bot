@@ -201,12 +201,12 @@ export async function getNewStreamingMovies(
       });
     }
 
-    cursor = data.hasMore && page < MAX_PAGES ? data.nextCursor : undefined;
+    const hitPageCap = data.hasMore && page >= MAX_PAGES;
+    cursor = hitPageCap ? undefined : data.nextCursor;
+    if (hitPageCap) {
+      console.log(`  Reached max pages (${MAX_PAGES}), stopping pagination.`);
+    }
   } while (cursor);
-
-  if (page >= MAX_PAGES) {
-    console.log(`  Reached max pages (${MAX_PAGES}), stopping pagination.`);
-  }
   console.log(`  Total streaming changes: ${results.length} movies.`);
 
   return results;
