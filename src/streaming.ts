@@ -27,6 +27,17 @@ const MAX_ALBUM_IMAGES = 4;
 /** Minimum Streaming Availability API rating (0-100) to filter catalog noise. */
 const MIN_RATING = 60;
 
+/**
+ * Minimum TMDB popularity for mid-rated movies.
+ * Movies with rating >= MIN_RATING_NOTABLE bypass this check.
+ * This filters out obscure catalog additions that have decent IMDB scores
+ * but no real audience recognition (e.g. straight-to-Prime filler).
+ */
+const MIN_POPULARITY = 5;
+
+/** Rating threshold above which popularity is ignored (genuinely well-rated). */
+const MIN_RATING_NOTABLE = 75;
+
 /** Max candidates to fetch TMDB details for (rate limit headroom). */
 const MAX_DETAIL_FETCHES = 30;
 
@@ -145,8 +156,10 @@ export async function getStreamingReleases(
       let poster: PosterImage | null = null;
       let trailerUrl: string | null = null;
       let trailerName = 'Official Trailer';
+      let popularity = 0;
       try {
         const details = await getMovieDetails(change.tmdbId!);
+        popularity = details.popularity;
         trailerUrl = details.trailerUrl;
         trailerName = details.trailerName ?? 'Official Trailer';
         if (details.poster_path) {
@@ -164,12 +177,15 @@ export async function getStreamingReleases(
       } catch (error) {
         console.error('TMDB enrichment failed for streaming movie', { title: change.title, tmdbId: change.tmdbId }, error);
       }
-      return { change, poster, trailerUrl, trailerName };
+      return { change, poster, trailerUrl, trailerName, popularity };
     }),
   );
 
-  // Cap to display limit (rating already filtered at candidate stage)
-  const enriched: EnrichedStreamingMovie[] = enrichedAll.slice(0, MAX_MOVIES_DISPLAY);
+  // Filter: notable = high rating OR recognizable (has audience).
+  // Cuts obscure catalog filler that has decent IMDB scores but no recognition.
+  const enriched: EnrichedStreamingMovie[] = enrichedAll
+    .filter((m) => m.popularity >= MIN_POPULARITY || (m.change.rating ?? 0) >= MIN_RATING_NOTABLE)
+    .slice(0, MAX_MOVIES_DISPLAY);
 
   // Group by service for the summary
   const grouped = groupByService(enriched);
