@@ -32,6 +32,10 @@ const BG_COLOR = { r: 24, g: 24, b: 24 };
  * @returns A single PosterImage containing the grid collage
  */
 export async function createCollage(posters: PosterImage[]): Promise<PosterImage> {
+  if (posters.length === 0) {
+    throw new Error('createCollage requires at least one poster.');
+  }
+
   const rows = Math.ceil(posters.length / COLS);
   const width = COLS * POSTER_WIDTH + (COLS - 1) * GAP;
   const height = rows * POSTER_HEIGHT + (rows - 1) * GAP;
