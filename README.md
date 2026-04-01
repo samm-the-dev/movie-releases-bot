@@ -32,7 +32,7 @@ Requires secrets in GitHub Actions:
 - `STREAMING_API_KEY` — free from [RapidAPI](https://rapidapi.com/movie-of-the-night-movie-of-the-night-default/api/streaming-availability)
 - `BLUESKY_HANDLE` — Bluesky account handle
 - `BLUESKY_APP_PASSWORD` — generated in Bluesky Settings > App Passwords
-- `DEPLOY_KEY` — SSH deploy key with write access (for committing state files via GitHub Actions)
+- `DEPLOY_KEY` — SSH deploy key with write access to this repo (for committing state files) and read access to the toolbox submodule repo
 
 ## Methodology
 
