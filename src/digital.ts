@@ -24,9 +24,6 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 /** Max movies to include. */
 const MAX_MOVIES_DISPLAY = 10;
 
-/** Max poster images per post (Bluesky limit). */
-const MAX_ALBUM_IMAGES = 4;
-
 /** Minimum TMDB popularity to filter out obscure straight-to-VOD titles. */
 const MIN_POPULARITY = 20;
 
@@ -194,8 +191,7 @@ export async function getDigitalReleases(
   // Posters
   const albumPosters = dated
     .map((r) => r.poster)
-    .filter((p): p is PosterImage => p !== null)
-    .slice(0, MAX_ALBUM_IMAGES);
+    .filter((p): p is PosterImage => p !== null);
 
   const moviePosters = dated.map((r) => r.poster);
 

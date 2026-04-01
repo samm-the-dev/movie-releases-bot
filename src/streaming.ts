@@ -21,9 +21,6 @@ import {
 /** Max movies to include across all services. */
 const MAX_MOVIES_DISPLAY = 15;
 
-/** Max poster images per post (Bluesky limit). */
-const MAX_ALBUM_IMAGES = 4;
-
 /** Minimum Streaming Availability API rating (0-100) to filter catalog noise. */
 const MIN_RATING = 60;
 
@@ -225,8 +222,7 @@ export async function getStreamingReleases(
   const trailerNames = ordered.map((m) => m.trailerName);
   const albumPosters = ordered
     .map((m) => m.poster)
-    .filter((p): p is PosterImage => p !== null)
-    .slice(0, MAX_ALBUM_IMAGES);
+    .filter((p): p is PosterImage => p !== null);
   const moviePosters = ordered.map((m) => m.poster);
 
   return {
