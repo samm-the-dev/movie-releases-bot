@@ -14,7 +14,7 @@ A Bluesky bot that posts weekly movie release announcements — what's opening i
 
 ▶️ **Streaming releases** (Mondays) — notable movies newly added to major US streaming services (Netflix, Disney+, Max, Hulu, Prime Video, Peacock, Paramount+, Apple TV+), filtered to subscription/free tier only.
 
-Each post includes a summary thread with poster collage (5+ movies) or album (1–4), followed by per-movie replies with details and embedded trailers.
+Each post includes a summary thread followed by per-movie replies with details and embedded trailers. Theatrical, digital, and streaming posts include poster images — a collage grid for 5+ movies, or a native album for 1–4.
 
 ## How it works
 
@@ -32,6 +32,7 @@ Requires secrets in GitHub Actions:
 - `STREAMING_API_KEY` — free from [RapidAPI](https://rapidapi.com/movie-of-the-night-movie-of-the-night-default/api/streaming-availability)
 - `BLUESKY_HANDLE` — Bluesky account handle
 - `BLUESKY_APP_PASSWORD` — generated in Bluesky Settings > App Passwords
+- `DEPLOY_KEY` — SSH deploy key with write access (for committing state files via GitHub Actions)
 
 ## Methodology
 
