@@ -15,7 +15,7 @@ import {
   formatShortDate,
   ReleaseType,
 } from './tmdb.js';
-import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
+import { formatThreadSummary } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 
@@ -173,11 +173,15 @@ export async function getTheatricalReleases(
 
   // Summary post with bullet list + hashtags
   const lines = newMovies.map((m) => formatMovieLine(m));
-  const header = `📽️ Opening This Week (${formatShortDate(gte)} – ${formatShortDate(lte)})`;
-  const footer = `#NowPlaying #Movies #Filmsky`;
+  const title = `📽️ Opening This Week`;
+  const dateRange = `${formatShortDate(gte)} – ${formatShortDate(lte)}`;
 
-  const summaryParts = formatBulletList(header, lines, footer);
-  const summaryPosts = summaryParts;
+  const summaryPosts = formatThreadSummary({
+    header: `${title} (${dateRange})`,
+    continuationHeader: `${title} (${dateRange}, cont.)`,
+    items: lines,
+    hashtags: ['#NowPlaying', '#Movies', '#Filmsky'],
+  });
 
   // Per-movie detail posts
   const moviePosts = enriched.map((e) => formatMovieDetail(e.details, e.movie.release_date));

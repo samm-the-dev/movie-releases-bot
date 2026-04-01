@@ -17,7 +17,7 @@ import {
   getWatchProviderLink,
   ReleaseType,
 } from './tmdb.js';
-import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
+import { formatThreadSummary } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 
@@ -181,9 +181,14 @@ export async function getDigitalReleases(
 
   // Summary post
   const lines = dated.map((r) => r.details.title);
-  const header = `▶️ Now on Digital (${formatWeekDate(referenceDate)})`;
-  const footer = `#NowOnDigital #Movies #Filmsky`;
-  const summaryParts = formatBulletList(header, lines, footer);
+  const title = `▶️ Now on Digital`;
+  const weekDate = formatWeekDate(referenceDate);
+  const summaryParts = formatThreadSummary({
+    header: `${title} (${weekDate})`,
+    continuationHeader: `${title} (${weekDate}, cont.)`,
+    items: lines,
+    hashtags: ['#NowOnDigital', '#Movies', '#Filmsky'],
+  });
 
   // Per-movie posts
   const moviePosts = dated.map((r) => formatDigitalDetail(r));
