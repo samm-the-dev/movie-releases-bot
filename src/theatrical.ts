@@ -22,9 +22,6 @@ import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 /** Max movies to include before threading. */
 const MAX_MOVIES_DISPLAY = 15;
 
-/** Max poster images per post (Bluesky limit). */
-const MAX_ALBUM_IMAGES = 4;
-
 /** Minimum TMDB popularity score to include (filters micro-releases). */
 const MIN_POPULARITY = 10;
 
@@ -185,11 +182,10 @@ export async function getTheatricalReleases(
   // Per-movie detail posts
   const moviePosts = enriched.map((e) => formatMovieDetail(e.details, e.movie.release_date));
 
-  // Album posters (up to 4 for summary)
+  // Album posters for summary (collage if 5+, native album if 1-4)
   const albumPosters = enriched
     .map((e) => e.poster)
-    .filter((p): p is PosterImage => p !== null)
-    .slice(0, MAX_ALBUM_IMAGES);
+    .filter((p): p is PosterImage => p !== null);
 
   // Individual posters for replies
   const moviePosters = enriched.map((e) => e.poster);

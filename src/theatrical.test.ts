@@ -21,6 +21,7 @@ function makeDetails(overrides: Partial<TMDBMovieDetails> = {}): TMDBMovieDetail
     title: 'Test Movie',
     overview: 'A great film.',
     runtime: 120,
+    popularity: 100,
     poster_path: '/test.jpg',
     genres: [{ id: 28, name: 'Action' }, { id: 53, name: 'Thriller' }],
     directors: ['Test Director'],

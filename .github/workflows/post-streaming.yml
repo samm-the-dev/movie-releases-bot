@@ -1,0 +1,57 @@
+name: Post Streaming Releases
+
+on:
+  schedule:
+    # Monday: three attempts at odd minutes to avoid GitHub scheduler congestion
+    - cron: '13 13 * * 1'
+    - cron: '43 15 * * 1'
+    - cron: '11 17 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview without posting)'
+        type: boolean
+        default: true
+      ignore_seen:
+        description: 'Ignore seen state (show all movies, even already posted)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Post to Bluesky
+        run: npx tsx src/post-streaming.ts
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          STREAMING_API_KEY: ${{ secrets.STREAMING_API_KEY }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+          IGNORE_SEEN: ${{ (github.event_name == 'workflow_dispatch' && inputs.ignore_seen) && '1' || '0' }}
+
+      - name: Commit seen state
+        if: env.DRY_RUN != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/*.json
+          git diff --staged --quiet || (git commit -m "update streaming seen IDs [skip ci]" && git push)
+        env:
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}

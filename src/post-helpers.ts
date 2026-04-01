@@ -14,6 +14,7 @@ import {
 import { loadState, saveState, track } from '../.toolbox/lib/bluesky/state.js';
 import { notifyDiscord } from './discord.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
+import { createCollage, COLLAGE_THRESHOLD } from './collage.js';
 
 /** A poster image to upload to Bluesky. */
 export interface PosterImage {
@@ -207,17 +208,32 @@ export async function postThread(
   agent: AtpAgent,
   result: ThreadResult,
 ): Promise<Array<{ uri: string; cid: string }>> {
-  // Post summary post(s) — first gets the album, overflow parts are text-only
+  // Post summary post(s) — first gets the album (or collage for 5+), overflow parts are text-only
   if (result.summaryPosts.length === 0) {
     throw new Error('summaryPosts must not be empty.');
   }
+
+  // Build the summary image(s): collage for 5+ posters, native album for 1-4
+  let summaryImages: PosterImage[] = result.albumPosters;
+  if (result.albumPosters.length >= COLLAGE_THRESHOLD) {
+    try {
+      const collage = await createCollage(result.albumPosters);
+      summaryImages = [collage];
+      console.log(`Created poster collage (${result.albumPosters.length} posters).`);
+    } catch (error) {
+      console.error('Collage creation failed, falling back to album:', error);
+      // Fall back to first 4 posters (Bluesky album limit)
+      summaryImages = result.albumPosters.slice(0, 4);
+    }
+  }
+
   let rootRef: { uri: string; cid: string } | undefined;
   let parent: { uri: string; cid: string } | undefined;
   for (let s = 0; s < result.summaryPosts.length; s++) {
     const text = result.summaryPosts[s];
     let ref: { uri: string; cid: string };
-    if (s === 0 && result.albumPosters.length > 0) {
-      ref = await postWithImages(agent, text, result.albumPosters, parent, rootRef);
+    if (s === 0 && summaryImages.length > 0) {
+      ref = await postWithImages(agent, text, summaryImages, parent, rootRef);
     } else {
       ref = await postWithImages(agent, text, [], parent, rootRef);
     }
@@ -293,7 +309,8 @@ export async function runJob(options: JobOptions): Promise<void> {
       console.log('---');
     }
     if (result.albumPosters.length > 0) {
-      console.log(`Album: ${result.albumPosters.length} poster(s)`);
+      const mode = result.albumPosters.length >= COLLAGE_THRESHOLD ? 'Collage' : 'Album';
+      console.log(`${mode}: ${result.albumPosters.length} poster(s)`);
       for (const p of result.albumPosters) {
         console.log(`  ${p.alt} (${(p.data.length / 1024).toFixed(0)} KB)`);
       }
