@@ -14,7 +14,7 @@ import {
   getTheatricalDateRange,
 } from './tmdb.js';
 import type { ThreadResult } from './post-helpers.js';
-import { formatBulletList } from '../.toolbox/lib/bluesky/format.js';
+import { formatThreadSummary } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 
@@ -114,9 +114,14 @@ export async function getNewTrailers(
   const lines = entries.map((e) => e.details.title);
   const rangeStart = formatShortDate(cutoffDate.toISOString().slice(0, 10));
   const rangeEnd = formatShortDate(now.toISOString().slice(0, 10));
-  const header = `📽️ New Trailers This Week (${rangeStart} – ${rangeEnd})`;
-  const footer = `#MovieTrailers #Movies #Filmsky`;
-  const summaryParts = formatBulletList(header, lines, footer);
+  const title = `📽️ New Trailers This Week`;
+  const dateRange = `${rangeStart} – ${rangeEnd}`;
+  const summaryParts = formatThreadSummary({
+    header: `${title} (${dateRange})`,
+    continuationHeader: `${title} (${dateRange}, cont.)`,
+    items: lines,
+    hashtags: ['#MovieTrailers', '#Movies', '#Filmsky'],
+  });
 
   // Per-movie posts
   const moviePosts = entries.map((e) => formatTrailerDetail(e));

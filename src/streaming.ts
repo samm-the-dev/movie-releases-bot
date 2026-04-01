@@ -7,7 +7,7 @@
  * by service.
  */
 import { getMovieDetails, formatRuntime, formatDate, formatShortDate } from './tmdb.js';
-import { splitForThread } from '../.toolbox/lib/bluesky/format.js';
+import { formatThreadSummary, type ItemGroup } from '../.toolbox/lib/bluesky/format.js';
 import { isTracked } from '../.toolbox/lib/bluesky/state.js';
 import type { TrackingState } from '../.toolbox/lib/bluesky/types.js';
 import type { ThreadResult, PosterImage } from './post-helpers.js';
@@ -198,17 +198,19 @@ export async function getStreamingReleases(
   // Group by service for the summary
   const grouped = groupByService(enriched);
 
-  // Build summary text grouped by service (service headers aren't bulleted)
-  const sections: string[] = [];
-  for (const [serviceName, movies] of grouped) {
-    const titles = movies.map((m) => `• ${m.change.title}`);
-    sections.push([`${serviceName}:`, ...titles].join('\n'));
-  }
+  const title = `▶️ New on Streaming`;
+  const weekDate = formatWeekDate(ref);
+  const itemGroups: ItemGroup[] = [...grouped.entries()].map(([serviceName, movies]) => ({
+    label: serviceName,
+    items: movies.map((m) => m.change.title),
+  }));
 
-  const header = `▶️ New on Streaming (${formatWeekDate(ref)})`;
-  const footer = '#NewOnStreaming #Movies #Filmsky';
-  const fullText = [header, '', ...sections, '', footer].join('\n');
-  const summaryPosts = splitForThread(fullText);
+  const summaryPosts = formatThreadSummary({
+    header: `${title} (${weekDate})`,
+    continuationHeader: `${title} (${weekDate}, cont.)`,
+    items: itemGroups,
+    hashtags: ['#NewOnStreaming', '#Movies', '#Filmsky'],
+  });
 
   // Flatten movies in service-grouped order for detail posts
   const ordered = [...grouped.values()].flat();
