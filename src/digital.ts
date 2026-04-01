@@ -184,7 +184,7 @@ export async function getDigitalReleases(
 
   // Summary post
   const lines = dated.map((r) => r.details.title);
-  const header = `📺 Now on Digital (${formatWeekDate(referenceDate)})`;
+  const header = `▶️ Now on Digital (${formatWeekDate(referenceDate)})`;
   const footer = `#NowOnDigital #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 
