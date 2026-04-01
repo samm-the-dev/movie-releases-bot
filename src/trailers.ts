@@ -114,7 +114,7 @@ export async function getNewTrailers(
   const lines = entries.map((e) => e.details.title);
   const rangeStart = formatShortDate(cutoffDate.toISOString().slice(0, 10));
   const rangeEnd = formatShortDate(now.toISOString().slice(0, 10));
-  const header = `▶️ New Trailers This Week (${rangeStart} – ${rangeEnd})`;
+  const header = `📽️ New Trailers This Week (${rangeStart} – ${rangeEnd})`;
   const footer = `#MovieTrailers #Movies #Filmsky`;
   const summaryParts = formatBulletList(header, lines, footer);
 

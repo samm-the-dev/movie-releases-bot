@@ -21,17 +21,35 @@ import {
 /** Max movies to include across all services. */
 const MAX_MOVIES_DISPLAY = 15;
 
-/** Max poster images per post (Bluesky limit). */
-const MAX_ALBUM_IMAGES = 4;
-
 /** Minimum Streaming Availability API rating (0-100) to filter catalog noise. */
 const MIN_RATING = 60;
+
+/**
+ * Minimum TMDB popularity for mid-rated movies.
+ * Movies with rating >= MIN_RATING_NOTABLE bypass this check.
+ * This filters out obscure catalog additions that have decent IMDB scores
+ * but no real audience recognition (e.g. straight-to-Prime filler).
+ */
+const MIN_POPULARITY = 5;
+
+/** Rating threshold above which popularity is ignored (genuinely well-rated). */
+const MIN_RATING_NOTABLE = 75;
 
 /** Max candidates to fetch TMDB details for (rate limit headroom). */
 const MAX_DETAIL_FETCHES = 30;
 
 /** TMDB image base URL. */
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+
+/**
+ * Check if a movie is notable enough to include.
+ * Passes if: popularity is unknown (TMDB failed), popularity >= threshold,
+ * or rating is high enough to bypass the popularity check.
+ */
+export function isNotable(popularity: number | null, rating: number): boolean {
+  if (popularity === null) return true;
+  return popularity >= MIN_POPULARITY || rating >= MIN_RATING_NOTABLE;
+}
 
 /** A streaming movie enriched with poster and trailer from TMDB. */
 interface EnrichedStreamingMovie {
@@ -145,8 +163,10 @@ export async function getStreamingReleases(
       let poster: PosterImage | null = null;
       let trailerUrl: string | null = null;
       let trailerName = 'Official Trailer';
+      let popularity: number | null = null;
       try {
         const details = await getMovieDetails(change.tmdbId!);
+        popularity = details.popularity;
         trailerUrl = details.trailerUrl;
         trailerName = details.trailerName ?? 'Official Trailer';
         if (details.poster_path) {
@@ -164,12 +184,16 @@ export async function getStreamingReleases(
       } catch (error) {
         console.error('TMDB enrichment failed for streaming movie', { title: change.title, tmdbId: change.tmdbId }, error);
       }
-      return { change, poster, trailerUrl, trailerName };
+      return { change, poster, trailerUrl, trailerName, popularity };
     }),
   );
 
-  // Cap to display limit (rating already filtered at candidate stage)
-  const enriched: EnrichedStreamingMovie[] = enrichedAll.slice(0, MAX_MOVIES_DISPLAY);
+  // Filter: notable = high rating OR recognizable (has audience).
+  // Cuts obscure catalog filler that has decent IMDB scores but no recognition.
+  // Unknown popularity (TMDB enrichment failed) passes — don't drop movies due to transient errors.
+  const enriched: EnrichedStreamingMovie[] = enrichedAll
+    .filter((m) => isNotable(m.popularity, m.change.rating ?? 0))
+    .slice(0, MAX_MOVIES_DISPLAY);
 
   // Group by service for the summary
   const grouped = groupByService(enriched);
@@ -198,8 +222,7 @@ export async function getStreamingReleases(
   const trailerNames = ordered.map((m) => m.trailerName);
   const albumPosters = ordered
     .map((m) => m.poster)
-    .filter((p): p is PosterImage => p !== null)
-    .slice(0, MAX_ALBUM_IMAGES);
+    .filter((p): p is PosterImage => p !== null);
   const moviePosters = ordered.map((m) => m.poster);
 
   return {

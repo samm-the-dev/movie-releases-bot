@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatStreamingDetail, getStreamingDateRange } from './streaming.js';
+import { formatStreamingDetail, getStreamingDateRange, isNotable } from './streaming.js';
 import type { StreamingChange } from './streaming-availability.js';
 
 function makeChange(overrides: Partial<StreamingChange> = {}): StreamingChange {
@@ -57,6 +57,28 @@ describe('formatStreamingDetail', () => {
   it('handles no directors', () => {
     const text = formatStreamingDetail(makeChange({ directors: [] }), null);
     expect(text).not.toContain('Dir.');
+  });
+});
+
+describe('isNotable', () => {
+  it('passes movies with high popularity', () => {
+    expect(isNotable(10, 65)).toBe(true);
+  });
+
+  it('passes movies with high rating regardless of popularity', () => {
+    expect(isNotable(0.2, 80)).toBe(true);
+  });
+
+  it('filters low-popularity, mid-rated movies', () => {
+    expect(isNotable(1.5, 67)).toBe(false);
+  });
+
+  it('passes when popularity is unknown (TMDB failure)', () => {
+    expect(isNotable(null, 65)).toBe(true);
+  });
+
+  it('filters zero popularity with mid rating', () => {
+    expect(isNotable(0, 60)).toBe(false);
   });
 });
 
