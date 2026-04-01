@@ -176,14 +176,15 @@ export async function getNewStreamingMovies(
     console.log(`  Streaming API page ${page}: ${data.changes.length} changes, hasMore=${data.hasMore}`);
 
     for (const change of data.changes) {
+      // Only include titles available with a base subscription or for free —
+      // skip add-ons (Shudder via Prime, etc.), rentals, and purchases.
+      // Filter before dedup so a rent/buy entry doesn't block a later subscription entry.
+      if (change.streamingOptionType !== 'subscription' && change.streamingOptionType !== 'free') continue;
+
       const serviceId = change.service.id;
       const key = `${change.showId}-${serviceId}`;
       if (seen.has(key)) continue;
       seen.add(key);
-
-      // Only include titles available with a base subscription or for free —
-      // skip add-ons (Shudder via Prime, etc.), rentals, and purchases.
-      if (change.streamingOptionType !== 'subscription' && change.streamingOptionType !== 'free') continue;
 
       const show = data.shows[change.showId];
       if (!show || show.showType !== 'movie') continue;
