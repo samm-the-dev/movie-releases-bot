@@ -49,7 +49,7 @@ export function buildDescription(
     for (const group of groups) {
       const lines = [
         `**${group.label}:**`,
-        ...group.indices.map((i) => formatTitle(movieTitles[i], movieIds[i], movieLinks?.[i])),
+        ...group.indices.map((i: number) => formatTitle(movieTitles[i], movieIds[i], movieLinks?.[i])),
       ];
       sections.push(lines.join('\n'));
     }
