@@ -62,5 +62,9 @@
   "trailer-1213243": {
     "uri": "at://did:plc:l56qmfb75q4wffz4kyjgbbm2/app.bsky.feed.post/3mtyj2dicva2j",
     "cid": "bafyreid7kbuwe4hypznwijkfupc3hdlwgbmpvobg3rohgwtjncaig2y3le"
+  },
+  "trailer-1483525": {
+    "uri": "at://did:plc:l56qmfb75q4wffz4kyjgbbm2/app.bsky.feed.post/3mukgmau7jp2b",
+    "cid": "bafyreidzf53evvrnb654da4dzxjcveksswqkgnnbzs5oqjmmtoryyod2vm"
   }
 }
